@@ -1,0 +1,1 @@
+"""Output adapters for sending logs to different destinations."""

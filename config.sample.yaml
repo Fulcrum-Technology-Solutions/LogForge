@@ -1,0 +1,69 @@
+# Synthetic Log Generator Configuration Sample
+
+# Entity registry - path to the registry file
+entity_registry: "entities.sample.yaml"
+
+# Output configuration
+outputs:
+  # Standard output to console
+  - type: stdout
+    name: console
+  
+  # File output with rotation
+  - type: file
+    name: file_output
+    file_path: "logs/synth_logs.json"
+    max_size: 10485760  # 10MB
+    backup_count: 5
+    # Enable hourly rotation with timestamp in filename
+    hourly_rotation: true
+    # Field in JSON log entry to identify the data source
+    # Each data source will get a separate log file
+    data_source_field: "generator"
+  
+  # HTTP output (uncomment to enable)
+  # - type: http
+  #   name: http_output
+  #   url: "http://localhost:8080/api/logs"
+  #   method: "POST"
+  #   headers:
+  #     Content-Type: "application/json"
+  #     Authorization: "Bearer your-token-here"
+  #   retry_count: 3
+  #   retry_delay: 1.0
+
+# Time patterns
+time_patterns:
+  # Business hours pattern (9am to 5pm on weekdays)
+  - name: business_hours
+    base_frequency: 1.0
+    start_time: "09:00"
+    end_time: "17:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 2.0
+  
+  # After hours pattern (5pm to 9am on weekdays)
+  - name: after_hours
+    base_frequency: 0.5
+    start_time: "17:00"
+    end_time: "09:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 0.3
+  
+  # Weekend pattern
+  - name: weekend
+    base_frequency: 0.2
+    start_time: "00:00"
+    end_time: "23:59"
+    days_of_week: ["SATURDAY", "SUNDAY"]
+    multiplier: 0.5
+
+# Active generators - list of generators to activate
+active_generators:
+  - windows_security
+  # - windows_system
+  # - windows_application
+  # Uncomment below when implemented
+  # - paloalto_firewall
+  # - paloalto_threat
+  # - azure_authentication

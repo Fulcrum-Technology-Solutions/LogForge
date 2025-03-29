@@ -1,0 +1,39 @@
+# Synthetic Log Generator Configuration
+
+# Entity registry
+entity_registry: "entities.yaml"
+
+# Output configuration
+outputs:
+  - type: stdout
+    name: console
+  - type: file
+    name: file_output
+    file_path: "logs/synth_logs.json"
+    max_size: 10485760  # 10MB
+    backup_count: 5
+
+# Time patterns
+time_patterns:
+  - name: business_hours
+    base_frequency: 1.0
+    start_time: "09:00"
+    end_time: "17:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 2.0
+  - name: after_hours
+    base_frequency: 0.5
+    start_time: "17:00"
+    end_time: "09:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 0.3
+  - name: weekend
+    base_frequency: 0.2
+    start_time: "00:00"
+    end_time: "23:59"
+    days_of_week: ["SATURDAY", "SUNDAY"]
+    multiplier: 0.5
+
+# Active generators
+active_generators:
+  - windows_security
