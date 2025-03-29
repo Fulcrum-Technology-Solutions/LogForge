@@ -149,42 +149,8 @@ class TemplateBasedGenerator(LogGenerator):
                 context
             )
             
-            # Preserve the original format of the template
-            # Add metadata as a comment at the top to help with identification
-            if self.template_path.endswith('.xml'):
-                # Add XML comment at the top with generator info
-                xml_comment = f"<!-- Generator: {self.name}, Timestamp: {context['timestamp']} -->\n"
-                # If the XML starts with <?xml, insert after the declaration
-                if rendered.strip().startswith('<?xml'):
-                    xml_decl_end = rendered.find('?>') + 2
-                    return rendered[:xml_decl_end] + '\n' + xml_comment + rendered[xml_decl_end:]
-                else:
-                    return xml_comment + rendered
-            
-            # For JSON, ensure it has a generator field
-            elif self.template_path.endswith('.json'):
-                if not rendered.strip().startswith('{'):
-                    # Not valid JSON, add header for troubleshooting
-                    return f"GENERATOR:{self.name}\n{rendered}" 
-                else:
-                    # Try to add generator field to valid JSON
-                    try:
-                        import json
-                        data = json.loads(rendered)
-                        if 'generator' not in data:
-                            data['generator'] = self.name
-                        return json.dumps(data)
-                    except:
-                        # If JSON parsing fails, return as is
-                        return rendered
-            
-            # For all other formats, add a comment/header line
-            else:
-                # Add a header line with generator info
-                return f"GENERATOR:{self.name}\n{rendered}"
-                
-            # This line is unreachable due to the if/elif/else above
-            # but we'll leave it for safety
+            # Return raw template output without any modifications
+            # This ensures formats are preserved exactly as rendered
             return rendered
         except Exception as e:
             logger.error(f"Error rendering template for {self.name}: {e}")
