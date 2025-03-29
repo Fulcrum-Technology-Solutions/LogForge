@@ -245,7 +245,6 @@ class TemplateManager:
             The formatted timestamp
         """
         return dt.strftime(format_str)
-        return random.randint(min_value, max_value)
         
     @staticmethod
     def current_timestamp() -> float:

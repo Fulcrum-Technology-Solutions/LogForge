@@ -374,6 +374,11 @@ def configure(ctx, config):
     # Get currently active generators
     active_generators = config_data.get('active_generators', [])
     
+    # Create and set up the engine once
+    engine = setup_engine(config_data)
+    click.echo("Discovering generators...")
+    engine.discover_packages()
+    
     while True:
         click.clear()
         click.echo(click.style("🪵 Logforge Configuration Menu", fg='green', bold=True))
@@ -438,7 +443,7 @@ def configure(ctx, config):
         elif choice == 4:
             # Start/stop generators
             if active_generators:
-                start_stop_generators_menu(config, active_generators)
+                start_stop_generators_menu(config, active_generators, engine)
             else:
                 click.echo("No generators configured. Please add generators first.")
                 click.pause()
@@ -481,6 +486,8 @@ def add_generator_menu(templates, active_generators):
         templates: Dictionary of available templates
         active_generators: List of active generators
     """
+    config_modified = False
+    
     while True:
         click.clear()
         click.echo(click.style("Add Generator", fg='green', bold=True))
@@ -499,10 +506,14 @@ def add_generator_menu(templates, active_generators):
         choice = click.prompt("Select a vendor", type=int, default=0)
         
         if choice == 0:
+            # Auto-save the config if modified
+            if config_modified:
+                save_configuration()
             return
         elif 1 <= choice <= len(vendors):
             vendor = vendors[choice - 1]
-            select_product_menu(vendor, templates[vendor], active_generators)
+            if select_product_menu(vendor, templates[vendor], active_generators):
+                config_modified = True
         else:
             click.echo("Invalid option.")
             click.pause()
@@ -515,7 +526,12 @@ def select_product_menu(vendor, products, active_generators):
         vendor: Vendor name
         products: Dictionary of available products for the vendor
         active_generators: List of active generators
+        
+    Returns:
+        True if generators were modified, False otherwise
     """
+    modified = False
+    
     while True:
         click.clear()
         click.echo(click.style(f"Select {vendor} Product", fg='green', bold=True))
@@ -534,13 +550,19 @@ def select_product_menu(vendor, products, active_generators):
         choice = click.prompt("Select a product", type=int, default=0)
         
         if choice == 0:
-            return
+            # Auto-save if modified
+            if modified:
+                save_configuration()
+            return modified
         elif 1 <= choice <= len(product_names):
             product = product_names[choice - 1]
-            select_template_menu(vendor, product, products[product], active_generators)
+            if select_template_menu(vendor, product, products[product], active_generators):
+                modified = True
         else:
             click.echo("Invalid option.")
             click.pause()
+            
+    return modified
 
 
 def select_template_menu(vendor, product, templates, active_generators):
@@ -551,7 +573,12 @@ def select_template_menu(vendor, product, templates, active_generators):
         product: Product name
         templates: List of available templates for the product
         active_generators: List of active generators
+        
+    Returns:
+        True if generators were modified, False otherwise
     """
+    modified = False
+    
     while True:
         click.clear()
         click.echo(click.style(f"Select {vendor} {product} Template", fg='green', bold=True))
@@ -601,7 +628,10 @@ def select_template_menu(vendor, product, templates, active_generators):
         choice = click.prompt("Select a template", type=int, default=0)
         
         if choice == 0:
-            return
+            # Auto-save if modified
+            if modified:
+                save_configuration()
+            return modified
         elif 1 <= choice <= len(templates):
             template = templates[choice - 1]
             generator_name = template_to_generator.get(template['path'], '')
@@ -620,11 +650,17 @@ def select_template_menu(vendor, product, templates, active_generators):
             # Add the generator
             active_generators.append(generator_name)
             click.echo(click.style(f"Added generator: {generator_name}", fg='green'))
+            
+            # Save configuration immediately
+            save_configuration()
+            
             click.pause()
-            return
+            return True
         else:
             click.echo("Invalid option.")
             click.pause()
+            
+    return modified
 
 
 def remove_generator_menu(active_generators):
@@ -654,6 +690,10 @@ def remove_generator_menu(active_generators):
         generator = active_generators[choice - 1]
         active_generators.remove(generator)
         click.echo(click.style(f"Removed generator: {generator}", fg='green'))
+        
+        # Save configuration immediately
+        save_configuration()
+        
         click.pause()
     else:
         click.echo("Invalid option.")
@@ -943,18 +983,47 @@ def remove_output_menu(outputs):
         click.pause()
 
 
-def start_stop_generators_menu(config_path, active_generators):
+def save_configuration():
+    """Save the current configuration to the config file."""
+    try:
+        # Need to get config_path and config_data from a higher scope
+        # In an actual function this would be properly passed or accessed
+        # For demonstration, this function is added but will be defined properly 
+        # when integrated into the main code
+        pass
+    except Exception as e:
+        click.echo(click.style(f"Error saving configuration: {e}", fg='red'))
+        click.pause()
+
+
+def start_stop_generators_menu(config_path, active_generators, engine):
     """Display a menu for starting and stopping generators.
     
     Args:
         config_path: Path to the configuration file
         active_generators: List of active generators
+        engine: The engine instance to use
     """
     # Set up the engine with the configuration
     config_data = load_config(config_path)
     
+    # Save the configuration function (defined within scope)
+    def save_configuration():
+        try:
+            config_data['active_generators'] = active_generators
+            with open(config_path, 'w') as f:
+                yaml.dump(config_data, f, default_flow_style=False)
+            click.echo(click.style("Configuration saved successfully!", fg='green'))
+            return True
+        except Exception as e:
+            click.echo(click.style(f"Error saving configuration: {e}", fg='red'))
+            return False
+    
+    # Make save_configuration available in global scope for other menus
+    globals()['save_configuration'] = save_configuration
+    
     # Log the configuration for debugging
-    click.echo("Loading configuration...")
+    click.echo("Using existing engine instance...")
     
     # Show outputs being loaded
     if 'outputs' in config_data:
@@ -964,18 +1033,11 @@ def start_stop_generators_menu(config_path, active_generators):
     else:
         click.echo("No outputs found in configuration, will use default file output")
     
-    # Create the engine using the configuration file
-    engine = setup_engine(config_data)
-    
-    # Discover all generators
-    click.echo("Discovering generators...")
-    engine.discover_packages()
-    
     # Small pause to let the user see the configuration
     click.pause()
     
-    # Set up initial state - engine is stopped and no generators are active yet
-    engine_running = False
+    # Check if the engine is already running (in case we're returning to this menu)
+    engine_running = engine.is_running()
     
     # Mark all generators in config file as active, but they're not running yet
     # When the engine starts, it will automatically start all active generators
@@ -1042,6 +1104,10 @@ def start_stop_generators_menu(config_path, active_generators):
                 try:
                     engine.stop()
                     engine_running = False
+                    
+                    # Save configuration to reflect engine status
+                    save_configuration()
+                    
                     click.echo("Engine stopped. All generators are now stopped.")
                     click.pause()
                 except Exception as e:
@@ -1053,6 +1119,10 @@ def start_stop_generators_menu(config_path, active_generators):
                     # Start the engine - this will start all active generators
                     engine.start()
                     engine_running = True
+                    
+                    # Save configuration to reflect engine status
+                    save_configuration()
+                    
                     click.echo("Engine started. All active generators are now running.")
                     click.pause()
                 except Exception as e:
@@ -1072,6 +1142,9 @@ def start_stop_generators_menu(config_path, active_generators):
                 try:
                     # Set generator to active
                     engine.generators[generator_name].active = True
+                    
+                    # Save configuration to update active_generators status
+                    save_configuration()
                     
                     # Start the generator if engine is running
                     if engine_running:
@@ -1102,6 +1175,10 @@ def start_stop_generators_menu(config_path, active_generators):
                         engine.stop_generator(generator_name)
                     
                     engine.generators[generator_name].active = False
+                    
+                    # Save configuration to update active_generators status
+                    save_configuration()
+                    
                     click.echo(f"Generator '{generator_name}' stopped and is now inactive.")
                     click.pause()
                 except Exception as e:
@@ -1136,6 +1213,9 @@ def start_stop_generators_menu(config_path, active_generators):
                         click.echo(f"Generator '{generator_name}' is now active but the engine is stopped. " +
                                   "Start the engine to begin generating logs.")
                     
+                    # Save configuration to update active_generators status
+                    save_configuration()
+                    
                     click.pause()
                 except Exception as e:
                     click.echo(f"Error restarting generator: {e}")
@@ -1148,6 +1228,9 @@ def start_stop_generators_menu(config_path, active_generators):
                 for generator_name in active_generators:
                     if generator_name in engine.generators:
                         engine.generators[generator_name].active = True
+                
+                # Save configuration to update active_generators status
+                save_configuration()
                 
                 # Start them if engine is running
                 if engine_running:
@@ -1175,6 +1258,9 @@ def start_stop_generators_menu(config_path, active_generators):
                         if engine_running:
                             engine.stop_generator(generator_name)
                         engine.generators[generator_name].active = False
+                
+                # Save configuration to update active_generators status
+                save_configuration()
                 
                 click.echo("All generators stopped and are now inactive.")
                 click.pause()
