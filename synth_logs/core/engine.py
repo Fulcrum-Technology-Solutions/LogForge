@@ -319,11 +319,23 @@ class Engine:
             
         for output in self.outputs:
             try:
+                # Log which output we're sending to
+                logger.debug(f"Sending log entry to output: {output.name} (type: {output.__class__.__name__})")
+                
                 # Pass the file extension to the output if it supports it
+                result = False
                 if hasattr(output, 'send_with_extension'):
-                    output.send_with_extension(log_entry, file_extension)
+                    logger.debug(f"Output {output.name} supports send_with_extension method")
+                    result = output.send_with_extension(log_entry, file_extension)
                 else:
-                    output.send(log_entry)
+                    logger.debug(f"Output {output.name} using standard send method")
+                    result = output.send(log_entry)
+                    
+                # Log the result
+                if result:
+                    logger.debug(f"Successfully sent log to output: {output.name}")
+                else:
+                    logger.warning(f"Failed to send log to output: {output.name}")
             except Exception as e:
                 logger.error(f"Error sending to output {output.name}: {e}")
                 
