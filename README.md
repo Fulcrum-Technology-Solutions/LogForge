@@ -2,19 +2,22 @@
 
 Logforge is a Python-based application for generating synthetic but realistic event logs from various products including Windows Event Log, Palo Alto Firewall, and Azure AD authentication. It's designed to help security professionals, developers, and testers create realistic log data for testing, development, and training purposes.
 
+Logforge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and Logforge will automatically generate realistic event logs.
+
 ## Features
 
-- Generates realistic logs with proper format and volume/frequency
-- Defines assets and identities that can be inserted into logs for realism and correlation
-- Uses Jinja templates for log definition
-- Supports multiple log formats including JSON, syslog, XML, and others
-- Supports multiple outputs (stdout, flat file, HTTP)
-- Allows collaborators to easily add new log types using only template files
-- Supports multiple data sources per vendor
-- Can run manually/headless, as a systemd service, or via a CLI menu
-- Allows users to add or remove log generators at runtime
-- Includes profiles to control frequency and verbosity based on time patterns
-- Supports hourly log rotation with separate files per data source
+- **Pure Template-Based Approach**: No coding required to add new log types
+- **Format Preservation**: XML templates output XML files, JSON templates output JSON files
+- **Interactive CLI Menu**: Configure generators, outputs, and control engine in real-time
+- **Realistic Generation**: Variable frequency based on time of day and day of week
+- **Multiple Output Options**: Console, files (with rotation), or HTTP endpoints
+- **Multiple Log Types**: Windows Event Logs, Palo Alto Firewall logs, and more
+- **Dynamic Entity Population**: Insert realistic usernames, hostnames, and IPs in logs
+- **Jinja2 Template Engine**: Powerful and flexible templating for log content
+- **Runtime Control**: Start/stop individual generators on demand
+- **Intelligent File Organization**: Separate files for each log type
+- **Service Mode**: Run as a systemd service for continuous generation
+- **Headless Operation**: Run without interaction for automated deployments
 
 ## Installation
 
@@ -71,15 +74,18 @@ synth-logs configure --config config.yaml
 By default, log files are organized with:
 - Separate files per data source (based on the `data_source_field`)
 - Hourly rotation with timestamps in filenames
-- Format: `{data_source}_{YYYYMMDD_HH}_{filename}`
+- File extension matching the source template (XML files output XML, JSON files output JSON)
+- Format: `{data_source}_{YYYYMMDD_HH}_{filename}.{extension}`
 
 Example:
 ```
 logs/
-  ├── windows_security_20250329_14_synth_logs.json
-  ├── windows_security_20250329_15_synth_logs.json
-  ├── windows_system_20250329_14_synth_logs.json
-  └── windows_system_20250329_15_synth_logs.json
+  ├── windows_security_login_success_20250329_14_synth_logs.xml
+  ├── windows_security_login_success_20250329_15_synth_logs.xml
+  ├── windows_system_service_start_20250329_14_synth_logs.xml
+  ├── windows_system_service_start_20250329_15_synth_logs.xml
+  ├── paloalto_firewall_traffic_20250329_14_synth_logs.json
+  └── paloalto_firewall_traffic_20250329_15_synth_logs.json
 ```
 
 ### Systemd Service
@@ -106,7 +112,7 @@ Logforge is designed to be easily extended with new log generators using a templ
 
 ### Adding Custom Data Sources
 
-Logforge now uses a template-only approach to create log generators. This simplifies the process of adding new log types without writing any code.
+Logforge uses a template-only approach to create log generators. This simplifies the process of adding new log types without writing any code.
 
 #### Creating Templates and Metadata
 
@@ -121,11 +127,13 @@ Example directory structure:
 templates/
 └── apache/
     └── webserver/
-        ├── access.json
+        ├── access.log
         ├── access.meta.yaml
-        ├── error.json
+        ├── error.log
         └── error.meta.yaml
 ```
+
+The output logs will maintain the same file extension as the template files, so an `access.log` template will generate `.log` files, and an XML template will generate `.xml` files.
 
 Example metadata file (`access.meta.yaml`):
 ```yaml
@@ -225,10 +233,13 @@ Metadata files are automatically discovered alongside templates with the same na
 
 In Logforge, each template file with its metadata creates a generator. For example:
 
-- `templates/windows/security/login_success.xml` with `login_success.meta.yaml` creates a `windows_security_login_success` generator
-- `templates/windows/security/login_failure.xml` with `login_failure.meta.yaml` creates a `windows_security_login_failure` generator
+- `templates/microsoft/windows/security/login_success.xml` with `login_success.meta.yaml` creates a `microsoft_windows_security_login_success` generator
+- `templates/microsoft/windows/security/login_failure.xml` with `login_failure.meta.yaml` creates a `microsoft_windows_security_login_failure` generator
+- `templates/paloalto/traffic/session.json` with `session.meta.yaml` creates a `paloalto_traffic_session` generator
 
-Each generator focuses on producing one specific type of log entry based on its template. When using the interactive configuration menu, you'll see all available generators grouped by vendor and product.
+Each generator focuses on producing one specific type of log entry based on its template. The generator's name is constructed from the path components (vendor, product, data_source), and it will output logs with the same file extension as the template.
+
+When using the interactive configuration menu, you'll see all available generators grouped by vendor and product, making it easy to select which log types to generate.
 
 ## License
 
