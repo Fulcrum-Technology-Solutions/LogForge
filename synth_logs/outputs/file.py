@@ -162,18 +162,53 @@ class FileAdapter(OutputAdapter):
             return None
         
         logger.info(f"Extracting data source using field: {self.data_source_field}")
+        
+        # Fallback extraction using basic string search
+        import re
+        
+        # Try multiple patterns to find the generator field
+        
+        # Pattern 1: Look for "generator": "something" or 'generator': 'something'
+        generator_pattern = r'"{}"\s*:\s*"([^"]+)"'.format(self.data_source_field)
+        generator_matches = re.search(generator_pattern, log_entry)
+        
+        # Pattern 2: Look for generator name in a more specific format
+        if not generator_matches:
+            generator_pattern2 = r'microsoft_windows_security_([a-z_]+)'
+            generator_matches2 = re.search(generator_pattern2, log_entry)
+            if generator_matches2:
+                return f"microsoft_windows_security_{generator_matches2.group(1)}"
             
-        # Simple check for JSON format with data source field
+            generator_pattern3 = r'paloalto_firewall_([a-z_]+)'
+            generator_matches3 = re.search(generator_pattern3, log_entry)
+            if generator_matches3:
+                return f"paloalto_firewall_{generator_matches3.group(1)}"
+        
+        if generator_matches:
+            # Extract the generator name from the regex match
+            generator_name = generator_matches.group(1)
+            logger.info(f"Found generator name via regex: {generator_name}")
+            
+            # Clean up generator name for use in filenames
+            for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
+                generator_name = generator_name.replace(char, '_')
+            return generator_name
+            
+        # If regex fails, try JSON parsing as a backup
         try:
             import json
-            data = json.loads(log_entry)
+            
+            # Try to fix common JSON issues by removing control characters
+            fixed_entry = ''.join(ch for ch in log_entry if ord(ch) >= 32 or ch == '\n')
+            
+            data = json.loads(fixed_entry)
             
             logger.info(f"Log entry parsed as JSON with keys: {list(data.keys())}")
             
             if self.data_source_field in data:
                 # Clean up generator name for use in filenames
                 generator_name = str(data[self.data_source_field])
-                logger.info(f"Found generator name: {generator_name}")
+                logger.info(f"Found generator name via JSON: {generator_name}")
                 
                 # Replace special characters that shouldn't be in filenames
                 for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
@@ -183,8 +218,59 @@ class FileAdapter(OutputAdapter):
                 logger.info(f"Field '{self.data_source_field}' not found in JSON data")
         except (json.JSONDecodeError, AttributeError, TypeError) as e:
             # Log the error for debugging
-            logger.warning(f"Could not extract data source from log entry: {e}")
-            logger.debug(f"Log entry content (first 100 chars): {log_entry[:100]}...")
+            logger.warning(f"Could not extract data source from log entry using JSON: {e}")
+            
+        # If we still don't have a data source, try to infer it from the log content
+        # For example, look for specific patterns that might indicate the source
+        
+        # Identify Windows Event Logs
+        if "Windows-Security-Auditing" in log_entry:
+            # Look for specific EventIDs to get more specific generator names
+            if "<EventID>4624</EventID>" in log_entry or "LogonType" in log_entry or "Logon Type" in log_entry:
+                return "microsoft_windows_security_login_success"
+            elif "<EventID>4625</EventID>" in log_entry or "Logon Failed" in log_entry:
+                return "microsoft_windows_security_login_failure"
+            elif "<EventID>4740</EventID>" in log_entry or "Account Locked" in log_entry:
+                return "microsoft_windows_security_account_locked"
+            elif "<EventID>4672</EventID>" in log_entry or "Privilege" in log_entry:
+                return "microsoft_windows_security_privilege_use"
+            elif "<EventID>4688</EventID>" in log_entry or "Process Creation" in log_entry:
+                return "microsoft_windows_security_process_creation"
+            else:
+                return "microsoft_windows_security"
+        
+        # Identify Windows System Logs
+        elif "Windows-System" in log_entry:
+            if "Service Control Manager" in log_entry and "started" in log_entry:
+                return "microsoft_windows_system_service_start"
+            elif "Service Control Manager" in log_entry and "stopped" in log_entry:
+                return "microsoft_windows_system_service_stop"
+            elif "Time Service" in log_entry or "TimeChange" in log_entry:
+                return "microsoft_windows_system_time_change"
+            else:
+                return "microsoft_windows_system"
+        
+        # Identify Windows Application Logs
+        elif "Windows-Application" in log_entry or "Application Error" in log_entry:
+            if "Error" in log_entry:
+                return "microsoft_windows_application_error"
+            elif "Warning" in log_entry:
+                return "microsoft_windows_application_warning"
+            elif "crash" in log_entry.lower() or "stopped working" in log_entry:
+                return "microsoft_windows_application_crash"
+            else:
+                return "microsoft_windows_application_info"
+                
+        # Identify PaloAlto Logs
+        elif "TRAFFIC" in log_entry:
+            return "paloalto_firewall_traffic_session"
+        elif "THREAT" in log_entry:
+            return "paloalto_firewall_threat_alert"
+        elif "paloalto" in log_entry.lower():
+            return "paloalto_firewall"
+        
+        logger.warning(f"Could not extract or infer data source from log entry")
+        logger.debug(f"Log entry content (first 100 chars): {log_entry[:100]}...")
             
         return None
         

@@ -136,13 +136,19 @@ class TemplateBasedGenerator(LogGenerator):
             **self.metadata.get('context', {})
         }
         
+        # Log template context for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Rendering template for {self.name} with generator name: {context.get('generator', 'unknown')}")
+        
         # Render the template
         try:
-            return self.template_manager.render_template(
+            rendered = self.template_manager.render_template(
                 self.template_path,
                 registry,
                 context
             )
+            return rendered
         except Exception as e:
             logger.error(f"Error rendering template for {self.name}: {e}")
             return f"ERROR: Failed to render template for {self.name}: {e}"
