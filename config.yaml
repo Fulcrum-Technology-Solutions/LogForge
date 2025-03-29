@@ -34,6 +34,9 @@ time_patterns:
     days_of_week: ["SATURDAY", "SUNDAY"]
     multiplier: 0.5
 
-# Active generators
-active_generators:
-  - windows_security
+# Active generators - uncomment and add generators as needed
+active_generators: []
+# Examples:
+#  - microsoft_windows_security_login_success
+#  - paloalto_firewall_traffic
+#  - paloalto_firewall_threat

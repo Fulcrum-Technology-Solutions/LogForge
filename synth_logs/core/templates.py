@@ -47,25 +47,33 @@ class TemplateManager:
         
         # Register custom filters
         env.filters['random_ip'] = self.random_ip
+        env.filters['random_public_ip'] = self.random_ip  # Alias for random_ip
         env.filters['random_private_ip'] = self.random_private_ip
         env.filters['random_guid'] = self.random_guid
         env.filters['random_port'] = self.random_port
         env.filters['random_mac'] = self.random_mac
         env.filters['random_string'] = self.random_string
         env.filters['random_int'] = self.random_int
+        env.filters['random_number'] = self.random_int  # Alias for random_int
         env.filters['current_timestamp'] = self.current_timestamp
         env.filters['format_timestamp'] = self.format_timestamp
+        env.filters['to_datetime'] = self.to_datetime
+        env.filters['format_datetime'] = self.format_datetime
         
         # Register global functions (available directly in templates)
         env.globals['random_int'] = self.random_int
+        env.globals['random_number'] = self.random_int  # Alias for random_int
         env.globals['random_guid'] = self.random_guid
         env.globals['random_ip'] = self.random_ip
+        env.globals['random_public_ip'] = self.random_ip  # Alias for random_ip
         env.globals['random_private_ip'] = self.random_private_ip
         env.globals['random_port'] = self.random_port
         env.globals['random_mac'] = self.random_mac
         env.globals['random_string'] = self.random_string
         env.globals['current_timestamp'] = self.current_timestamp
         env.globals['format_timestamp'] = self.format_timestamp
+        env.globals['to_datetime'] = self.to_datetime
+        env.globals['format_datetime'] = self.format_datetime
         
         return env
         
@@ -205,6 +213,37 @@ class TemplateManager:
         return random.randint(min_value, max_value)
         
     @staticmethod
+    def to_datetime(timestamp: str) -> datetime.datetime:
+        """Convert a timestamp string to a datetime object.
+        
+        Args:
+            timestamp: The timestamp string to convert
+            
+        Returns:
+            A datetime object
+        """
+        try:
+            # Try to parse the timestamp as ISO format
+            return datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            # Fall back to current time
+            return datetime.datetime.now()
+            
+    @staticmethod
+    def format_datetime(dt: datetime.datetime, format_str: str = '%Y-%m-%dT%H:%M:%S.%fZ') -> str:
+        """Format a datetime object.
+        
+        Args:
+            dt: The datetime object to format
+            format_str: The format string to use (default ISO format)
+            
+        Returns:
+            The formatted timestamp
+        """
+        return dt.strftime(format_str)
+        return random.randint(min_value, max_value)
+        
+    @staticmethod
     def current_timestamp() -> float:
         """Get the current timestamp.
         
@@ -323,6 +362,32 @@ class TemplateManager:
                     templates[vendor][product].append(template_info)
                     
         return templates
+        
+    def get_all_template_paths(self) -> List[str]:
+        """Get all template paths in the template directories.
+        
+        Returns:
+            List of template paths
+        """
+        template_paths = []
+        
+        for template_dir in self.template_dirs:
+            if not os.path.exists(template_dir):
+                continue
+                
+            # Walk the template directory
+            for root, _, files in os.walk(template_dir):
+                for file in files:
+                    # Skip metadata files
+                    if file.endswith('.meta.yaml'):
+                        continue
+                        
+                    # Get the relative path to the template
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, template_dir)
+                    template_paths.append(rel_path)
+        
+        return template_paths
         
     def create_metadata_file(self, template_path: str, metadata: Dict[str, Any]) -> bool:
         """Create or update a metadata file for a template.

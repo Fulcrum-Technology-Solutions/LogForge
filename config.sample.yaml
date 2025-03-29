@@ -59,11 +59,10 @@ time_patterns:
     multiplier: 0.5
 
 # Active generators - list of generators to activate
-active_generators:
-  - windows_security
-  # - windows_system
-  # - windows_application
-  # Uncomment below when implemented
-  # - paloalto_firewall
-  # - paloalto_threat
-  # - azure_authentication
+active_generators: []
+# Examples:
+#  - microsoft_windows_security_login_success
+#  - microsoft_windows_security_login_failure
+#  - microsoft_windows_system_service_start
+#  - paloalto_firewall_traffic_session
+#  - paloalto_firewall_threat_alert

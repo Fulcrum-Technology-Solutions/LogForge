@@ -15,11 +15,6 @@ setup(
         "console_scripts": [
             "synth-logs=synth_logs.cli:main",
         ],
-        "synth_logs.packages": [
-            "windows=packages.windows:register",
-            "paloalto=packages.paloalto:register",
-            "azure=packages.azure:register",
-        ],
     },
     python_requires=">=3.8",
 )

@@ -1,14 +1,18 @@
 """Core engine for the synthetic log generator."""
 
+import datetime
 import importlib
 import importlib.metadata
 import logging
+import os
+import random
 import threading
 import time
-from typing import Dict, List, Set, Type, Optional
+from typing import Dict, List, Set, Type, Optional, Any
 
 from synth_logs.core.registry import EntityRegistry
 from synth_logs.core.scheduler import Scheduler
+from synth_logs.core.templates import TemplateManager
 from synth_logs.outputs.base import OutputAdapter
 
 logger = logging.getLogger(__name__)
@@ -46,6 +50,104 @@ class LogGenerator:
         raise NotImplementedError("Log generators must implement the get_frequency method")
 
 
+class TemplateBasedGenerator(LogGenerator):
+    """Generator that uses a template file directly."""
+    
+    def __init__(self, name: str, template_path: str, template_manager, metadata: Dict = None):
+        """Initialize the generator.
+        
+        Args:
+            name: Name of the generator
+            template_path: Path to the template file
+            template_manager: Template manager for rendering templates
+            metadata: Optional metadata for the generator
+        """
+        super().__init__(name)
+        self.template_path = template_path
+        self.template_manager = template_manager
+        self.metadata = metadata or {}
+        
+        # Default frequency if not specified in metadata
+        self.base_frequency = self.metadata.get('base_frequency', 0.1)
+        
+        # Get patterns from metadata
+        self.time_patterns = self.metadata.get('time_patterns', [])
+        
+    def get_frequency(self) -> float:
+        """Get the current frequency of log generation.
+        
+        Returns:
+            The frequency in entries per second
+        """
+        # Start with the base frequency
+        frequency = self.base_frequency
+        
+        # Apply time-based patterns based on current time
+        now = datetime.datetime.now()
+        hour = now.hour
+        
+        # Increase frequency during business hours (9am - 5pm)
+        if 9 <= hour < 17 and 'business_hours' in self.time_patterns:
+            frequency *= self.metadata.get('business_hours_multiplier', 2.0)
+            
+        # Reduce frequency during night hours (11pm - 6am)
+        if (hour >= 23 or hour < 6) and 'night_hours' in self.time_patterns:
+            frequency *= self.metadata.get('night_hours_multiplier', 0.3)
+            
+        # Apply day of week patterns
+        weekday = now.weekday()  # 0 = Monday, 6 = Sunday
+        
+        # Weekend pattern
+        if weekday >= 5 and 'weekend' in self.time_patterns:  # Saturday or Sunday
+            frequency *= self.metadata.get('weekend_multiplier', 0.5)
+            
+        # Add some randomness
+        frequency *= random.uniform(0.8, 1.2)
+        
+        return frequency
+        
+    def generate(self, registry: EntityRegistry) -> str:
+        """Generate a log entry using the template.
+        
+        Args:
+            registry: Entity registry to use
+            
+        Returns:
+            The generated log entry
+        """
+        # Get random entities from registry
+        user = registry.get_random_user()
+        device = registry.get_random_device()
+        service = registry.get_random_service()
+        
+        # Create context with common variables
+        context = {
+            # Standard context values
+            'timestamp': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            'process_id': random.randint(1000, 10000),
+            'thread_id': random.randint(1000, 10000),
+            'hostname': device.hostname if device else f"host-{random.randint(1, 1000)}",
+            'ip_address': device.ip_address if device else self.template_manager.random_private_ip(),
+            'username': user.username if user else f"user{random.randint(1, 1000)}",
+            'domain': "CONTOSO",
+            'generator': self.name,
+            
+            # Add all metadata fields to context for use in templates
+            **self.metadata.get('context', {})
+        }
+        
+        # Render the template
+        try:
+            return self.template_manager.render_template(
+                self.template_path,
+                registry,
+                context
+            )
+        except Exception as e:
+            logger.error(f"Error rendering template for {self.name}: {e}")
+            return f"ERROR: Failed to render template for {self.name}: {e}"
+
+
 class Engine:
     """Core engine for the synthetic log generator."""
     
@@ -58,10 +160,16 @@ class Engine:
         self.running = False
         self.threads: List[threading.Thread] = []
         
+        # Initialize template manager
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        template_dir = os.path.join(base_dir, 'templates')
+        self.template_manager = TemplateManager([template_dir])
+        
     def discover_packages(self):
         """Discover and load available packages."""
         logger.info("Discovering packages...")
         
+        # First, discover packages (this is for backward compatibility)
         try:
             # Python 3.10+ way
             for entry_point in importlib.metadata.entry_points(group='synth_logs.packages'):
@@ -80,6 +188,9 @@ class Engine:
                     register_func(self)
                 except Exception as e:
                     logger.error(f"Failed to load package {entry_point.name}: {e}")
+        
+        # Now directly discover and load all available generators
+        self.discover_generators()
     
     def register_generator(self, generator: LogGenerator):
         """Register a log generator.
@@ -188,3 +299,81 @@ class Engine:
                 output.send(log_entry)
             except Exception as e:
                 logger.error(f"Error sending to output {output.name}: {e}")
+                
+    def discover_generators(self):
+        """Discover and load all available generators via entry points."""
+        logger.info("Discovering generators...")
+        
+        # First discover code-based generators from entry points
+        try:
+            # Python 3.10+ way
+            for entry_point in importlib.metadata.entry_points(group='synth_logs.generators'):
+                self._load_generator_from_entry_point(entry_point)
+        except TypeError:
+            # Python 3.9 and earlier way
+            for entry_point in importlib.metadata.entry_points().get('synth_logs.generators', []):
+                self._load_generator_from_entry_point(entry_point)
+        
+        # Then discover template-based generators
+        self.discover_template_generators()
+    
+    def _load_generator_from_entry_point(self, entry_point):
+        """Load a generator from an entry point.
+        
+        Args:
+            entry_point: The entry point to load
+        """
+        logger.info(f"Loading generator: {entry_point.name}")
+        try:
+            generator_class = entry_point.load()
+            generator = generator_class()
+            self.register_generator(generator)
+        except Exception as e:
+            logger.error(f"Failed to load generator {entry_point.name}: {e}")
+            
+    def discover_template_generators(self):
+        """Discover and create generators from templates in the template directory."""
+        logger.info("Discovering template-based generators...")
+        
+        # Get all template paths
+        template_paths = self.template_manager.get_all_template_paths()
+        
+        for template_path in template_paths:
+            try:
+                # Get metadata for this template
+                metadata = self.template_manager.get_template_metadata(template_path)
+                
+                # Skip if this is not meant to be a generator
+                if not metadata.get('is_generator', True):
+                    continue
+                
+                # Create a generator name from the path
+                # Format: vendor_product_datasource (from metadata if possible)
+                vendor = metadata.get('vendor', '').lower() or os.path.dirname(template_path).split('/')[0]
+                product = metadata.get('product', '').lower() or os.path.dirname(template_path).split('/')[1] if len(os.path.dirname(template_path).split('/')) > 1 else ''
+                data_source = metadata.get('data_source', '').lower().replace(' ', '_') or os.path.splitext(os.path.basename(template_path))[0]
+                
+                # Construct generator name
+                base_name = f"{vendor}_{product}"
+                if data_source:
+                    base_name = f"{base_name}_{data_source}"
+                    
+                # Clean up name (remove special chars)
+                generator_name = ''.join(c if c.isalnum() or c == '_' else '_' for c in base_name)
+                
+                # Don't create duplicate generators
+                if generator_name in self.generators:
+                    continue
+                
+                # Create and register the generator
+                logger.info(f"Creating template-based generator: {generator_name} for {template_path}")
+                generator = TemplateBasedGenerator(
+                    name=generator_name,
+                    template_path=template_path,
+                    template_manager=self.template_manager,
+                    metadata=metadata
+                )
+                self.register_generator(generator)
+                
+            except Exception as e:
+                logger.error(f"Error creating generator for template {template_path}: {e}")

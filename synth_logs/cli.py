@@ -327,11 +327,25 @@ def configure(ctx, config):
             click.echo("  No active generators")
         
         click.echo("")
+        # Get current outputs
+        outputs = config_data.get('outputs', [])
+        
+        # Display active outputs
+        click.echo(click.style("Active Outputs:", fg='blue', bold=True))
+        if outputs:
+            for i, output in enumerate(outputs, 1):
+                click.echo(f"{i}. {output.get('name', 'unnamed')} ({output.get('type', 'unknown')})")
+        else:
+            click.echo("  No active outputs")
+            
+        click.echo("")
         click.echo(click.style("Options:", fg='yellow'))
         click.echo("1. Add generator")
         click.echo("2. Remove generator")
-        click.echo("3. Save configuration")
-        click.echo("4. Exit")
+        click.echo("3. Configure outputs")
+        click.echo("4. Start/stop generators")
+        click.echo("5. Save configuration")
+        click.echo("6. Exit")
         
         choice = click.prompt("Select an option", type=int, default=1)
         
@@ -346,6 +360,17 @@ def configure(ctx, config):
                 click.echo("No generators to remove.")
                 click.pause()
         elif choice == 3:
+            # Configure outputs
+            outputs = configure_outputs_menu(outputs)
+            config_data['outputs'] = outputs
+        elif choice == 4:
+            # Start/stop generators
+            if active_generators:
+                start_stop_generators_menu(config, active_generators)
+            else:
+                click.echo("No generators configured. Please add generators first.")
+                click.pause()
+        elif choice == 5:
             # Save configuration
             config_data['active_generators'] = active_generators
             
@@ -357,12 +382,14 @@ def configure(ctx, config):
                 click.echo(click.style(f"Error saving configuration: {e}", fg='red'))
                 
             click.pause()
-        elif choice == 4:
+        elif choice == 6:
             # Exit
-            if config_data.get('active_generators') != active_generators:
+            config_changed = (config_data.get('active_generators') != active_generators) or (config_data.get('outputs') != outputs)
+            if config_changed:
                 save = click.confirm("Configuration has changed. Save before exiting?", default=True)
                 if save:
                     config_data['active_generators'] = active_generators
+                    config_data['outputs'] = outputs
                     try:
                         with open(config, 'w') as f:
                             yaml.dump(config_data, f, default_flow_style=False)
@@ -459,19 +486,42 @@ def select_template_menu(vendor, product, templates, active_generators):
         click.echo(click.style("=" * 50, fg='green'))
         click.echo("")
         
+        # Map generator names from template metadata
+        # Example: microsoft_windows_security_login_success
+        template_to_generator = {}
+        for template in templates:
+            metadata = template.get('metadata', {})
+            path_parts = template['path'].split('/')
+            
+            # Get components from metadata if available, fallback to path parts
+            vendor = metadata.get('vendor', '').lower() or path_parts[0]
+            product = metadata.get('product', '').lower() or (path_parts[1] if len(path_parts) > 1 else '')
+            
+            # Get data source from metadata or filename
+            data_source = metadata.get('data_source', '').lower().replace(' ', '_')
+            if not data_source:
+                # Extract from filename
+                filename = os.path.basename(template['path'])
+                data_source = os.path.splitext(filename)[0]
+            
+            # Construct full generator name (vendor_product_data_source)
+            full_generator = f"{vendor}_{product}_{data_source}"
+            # Clean up name (remove special chars)
+            generator_name = ''.join(c if c.isalnum() or c == '_' else '_' for c in full_generator)
+            
+            template_to_generator[template['path']] = generator_name
+        
         # Display available templates
         click.echo(click.style("Available Templates:", fg='blue', bold=True))
         for i, template in enumerate(templates, 1):
-            # Create a generator name from the path
-            path_parts = template['path'].split('/')
-            generator_name = '_'.join(path_parts)
-            generator_name = os.path.splitext(generator_name)[0]
+            generator_name = template_to_generator.get(template['path'], '')
             
             # Check if the generator is already active
             status = "[Active]" if generator_name in active_generators else ""
             
             click.echo(f"{i}. {template['data_source']} {status}")
             click.echo(f"   Description: {template['description']}")
+            click.echo(f"   Generator: {generator_name}")
             click.echo("")
             
         click.echo("0. Back")
@@ -482,12 +532,13 @@ def select_template_menu(vendor, product, templates, active_generators):
             return
         elif 1 <= choice <= len(templates):
             template = templates[choice - 1]
+            generator_name = template_to_generator.get(template['path'], '')
             
-            # Create a generator name from the path
-            path_parts = template['path'].split('/')
-            generator_name = '_'.join(path_parts)
-            generator_name = os.path.splitext(generator_name)[0]
-            
+            if not generator_name:
+                click.echo("Could not determine generator name for this template.")
+                click.pause()
+                continue
+                
             # Check if the generator is already active
             if generator_name in active_generators:
                 click.echo(f"Generator '{generator_name}' is already active.")
@@ -535,6 +586,468 @@ def remove_generator_menu(active_generators):
     else:
         click.echo("Invalid option.")
         click.pause()
+
+
+def configure_outputs_menu(outputs):
+    """Display a menu for configuring outputs.
+    
+    Args:
+        outputs: List of current outputs
+        
+    Returns:
+        Updated list of outputs
+    """
+    while True:
+        click.clear()
+        click.echo(click.style("Configure Outputs", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display active outputs
+        click.echo(click.style("Active Outputs:", fg='blue', bold=True))
+        if outputs:
+            for i, output in enumerate(outputs, 1):
+                click.echo(f"{i}. {output.get('name', 'unnamed')} ({output.get('type', 'unknown')})")
+        else:
+            click.echo("  No active outputs")
+            
+        click.echo("")
+        click.echo(click.style("Options:", fg='yellow'))
+        click.echo("1. Add output")
+        click.echo("2. Edit output")
+        click.echo("3. Remove output")
+        click.echo("0. Back")
+        
+        choice = click.prompt("Select an option", type=int, default=0)
+        
+        if choice == 0:
+            return outputs
+        elif choice == 1:
+            # Add output
+            new_output = add_output_menu()
+            if new_output:
+                outputs.append(new_output)
+        elif choice == 2:
+            # Edit output
+            if outputs:
+                edit_output_menu(outputs)
+            else:
+                click.echo("No outputs to edit.")
+                click.pause()
+        elif choice == 3:
+            # Remove output
+            if outputs:
+                remove_output_menu(outputs)
+            else:
+                click.echo("No outputs to remove.")
+                click.pause()
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def add_output_menu():
+    """Display a menu for adding an output.
+    
+    Returns:
+        Dictionary representing the new output, or None if cancelled
+    """
+    click.clear()
+    click.echo(click.style("Add Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    # Choose output type
+    click.echo(click.style("Output Types:", fg='blue', bold=True))
+    click.echo("1. Console (stdout)")
+    click.echo("2. File")
+    click.echo("3. HTTP")
+    click.echo("0. Cancel")
+    
+    choice = click.prompt("Select output type", type=int, default=0)
+    
+    if choice == 0:
+        return None
+    elif choice == 1:
+        # Console output
+        output = configure_stdout_output()
+    elif choice == 2:
+        # File output
+        output = configure_file_output()
+    elif choice == 3:
+        # HTTP output
+        output = configure_http_output()
+    else:
+        click.echo("Invalid option.")
+        click.pause()
+        return None
+        
+    return output
+
+
+def configure_stdout_output():
+    """Configure a stdout output.
+    
+    Returns:
+        Dictionary representing the stdout output
+    """
+    click.clear()
+    click.echo(click.style("Configure Console Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    name = click.prompt("Output name", default="console")
+    
+    return {
+        "type": "stdout",
+        "name": name
+    }
+
+
+def configure_file_output():
+    """Configure a file output.
+    
+    Returns:
+        Dictionary representing the file output
+    """
+    click.clear()
+    click.echo(click.style("Configure File Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    name = click.prompt("Output name", default="file_output")
+    file_path = click.prompt("File path", default="logs/synth_logs.json")
+    max_size = click.prompt("Max file size in bytes (0 for no limit)", default=0, type=int)
+    backup_count = click.prompt("Number of backup files to keep", default=5, type=int)
+    hourly_rotation = click.confirm("Enable hourly rotation?", default=True)
+    data_source_field = click.prompt("Data source field for file separation (empty for none)", default="generator")
+    
+    output = {
+        "type": "file",
+        "name": name,
+        "file_path": file_path,
+        "backup_count": backup_count,
+        "hourly_rotation": hourly_rotation,
+    }
+    
+    if max_size > 0:
+        output["max_size"] = max_size
+        
+    if data_source_field:
+        output["data_source_field"] = data_source_field
+        
+    return output
+
+
+def configure_http_output():
+    """Configure an HTTP output.
+    
+    Returns:
+        Dictionary representing the HTTP output
+    """
+    click.clear()
+    click.echo(click.style("Configure HTTP Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    name = click.prompt("Output name", default="http_output")
+    url = click.prompt("URL", default="http://localhost:8080/api/logs")
+    method = click.prompt("HTTP method", default="POST")
+    retry_count = click.prompt("Retry count", default=3, type=int)
+    retry_delay = click.prompt("Retry delay (seconds)", default=1.0, type=float)
+    
+    # Headers
+    headers = {}
+    click.echo("\nConfigure Headers (leave name empty to finish):")
+    while True:
+        header_name = click.prompt("Header name", default="")
+        if not header_name:
+            break
+            
+        header_value = click.prompt("Header value")
+        headers[header_name] = header_value
+    
+    output = {
+        "type": "http",
+        "name": name,
+        "url": url,
+        "method": method,
+        "retry_count": retry_count,
+        "retry_delay": retry_delay
+    }
+    
+    if headers:
+        output["headers"] = headers
+        
+    return output
+
+
+def edit_output_menu(outputs):
+    """Display a menu for editing an output.
+    
+    Args:
+        outputs: List of outputs to edit
+    """
+    click.clear()
+    click.echo(click.style("Edit Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    # Display active outputs
+    click.echo(click.style("Active Outputs:", fg='blue', bold=True))
+    for i, output in enumerate(outputs, 1):
+        click.echo(f"{i}. {output.get('name', 'unnamed')} ({output.get('type', 'unknown')})")
+        
+    click.echo("")
+    click.echo("0. Back")
+    
+    choice = click.prompt("Select an output to edit", type=int, default=0)
+    
+    if choice == 0:
+        return
+    elif 1 <= choice <= len(outputs):
+        output = outputs[choice - 1]
+        output_type = output.get('type', 'unknown')
+        
+        if output_type == 'stdout':
+            new_output = configure_stdout_output()
+        elif output_type == 'file':
+            new_output = configure_file_output()
+        elif output_type == 'http':
+            new_output = configure_http_output()
+        else:
+            click.echo(f"Unsupported output type: {output_type}")
+            click.pause()
+            return
+            
+        outputs[choice - 1] = new_output
+        click.echo(click.style("Output updated successfully!", fg='green'))
+        click.pause()
+    else:
+        click.echo("Invalid option.")
+        click.pause()
+
+
+def remove_output_menu(outputs):
+    """Display a menu for removing an output.
+    
+    Args:
+        outputs: List of outputs
+    """
+    click.clear()
+    click.echo(click.style("Remove Output", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    # Display active outputs
+    click.echo(click.style("Active Outputs:", fg='blue', bold=True))
+    for i, output in enumerate(outputs, 1):
+        click.echo(f"{i}. {output.get('name', 'unnamed')} ({output.get('type', 'unknown')})")
+        
+    click.echo("")
+    click.echo("0. Back")
+    
+    choice = click.prompt("Select an output to remove", type=int, default=0)
+    
+    if choice == 0:
+        return
+    elif 1 <= choice <= len(outputs):
+        output = outputs.pop(choice - 1)
+        click.echo(click.style(f"Removed output: {output.get('name', 'unnamed')}", fg='green'))
+        click.pause()
+    else:
+        click.echo("Invalid option.")
+        click.pause()
+
+
+def start_stop_generators_menu(config_path, active_generators):
+    """Display a menu for starting and stopping generators.
+    
+    Args:
+        config_path: Path to the configuration file
+        active_generators: List of active generators
+    """
+    # Set up the engine with the configuration
+    config_data = load_config(config_path)
+    engine = setup_engine(config_data)
+    
+    # Discover all generators
+    engine.discover_packages()
+    
+    # Track running status
+    running_generators = set()
+    
+    while True:
+        click.clear()
+        click.echo(click.style("Generator Control", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display generators and their status
+        click.echo(click.style("Generators:", fg='blue', bold=True))
+        for i, generator_name in enumerate(active_generators, 1):
+            # Check if this generator exists
+            generator_exists = generator_name in engine.generators
+            
+            # Get running status
+            is_running = generator_name in running_generators
+            
+            # Format status indicators
+            status = ""
+            if not generator_exists:
+                status = click.style("[Not Found]", fg='red')
+            elif is_running:
+                status = click.style("[Running]", fg='green')
+            else:
+                status = click.style("[Stopped]", fg='yellow')
+                
+            click.echo(f"{i}. {generator_name} {status}")
+            
+        click.echo("")
+        click.echo(click.style("Options:", fg='yellow'))
+        click.echo("1. Start generator")
+        click.echo("2. Stop generator")
+        click.echo("3. Start all generators")
+        click.echo("4. Stop all generators")
+        click.echo("0. Back")
+        
+        choice = click.prompt("Select an option", type=int, default=0)
+        
+        if choice == 0:
+            # Before returning, stop any running generators
+            if running_generators:
+                if click.confirm("Stop all running generators before exiting?", default=True):
+                    for generator_name in list(running_generators):
+                        try:
+                            engine.stop_generator(generator_name)
+                            running_generators.remove(generator_name)
+                        except Exception as e:
+                            click.echo(f"Error stopping generator {generator_name}: {e}")
+            return
+            
+        elif choice == 1:
+            # Start a generator
+            generator_idx = select_generator_to_control(active_generators, "start")
+            if generator_idx >= 0:
+                generator_name = active_generators[generator_idx]
+                if generator_name not in engine.generators:
+                    click.echo(f"Generator '{generator_name}' not found in the system.")
+                    click.pause()
+                    continue
+                    
+                try:
+                    engine.start_generator(generator_name)
+                    running_generators.add(generator_name)
+                    click.echo(f"Generator '{generator_name}' started.")
+                    click.pause()
+                except Exception as e:
+                    click.echo(f"Error starting generator: {e}")
+                    click.pause()
+                    
+        elif choice == 2:
+            # Stop a generator
+            if not running_generators:
+                click.echo("No generators are currently running.")
+                click.pause()
+                continue
+                
+            generator_idx = select_generator_to_control(active_generators, "stop")
+            if generator_idx >= 0:
+                generator_name = active_generators[generator_idx]
+                if generator_name not in running_generators:
+                    click.echo(f"Generator '{generator_name}' is not running.")
+                    click.pause()
+                    continue
+                    
+                try:
+                    engine.stop_generator(generator_name)
+                    running_generators.remove(generator_name)
+                    click.echo(f"Generator '{generator_name}' stopped.")
+                    click.pause()
+                except Exception as e:
+                    click.echo(f"Error stopping generator: {e}")
+                    click.pause()
+                    
+        elif choice == 3:
+            # Start all generators
+            any_started = False
+            
+            for generator_name in active_generators:
+                if generator_name not in engine.generators:
+                    click.echo(f"Generator '{generator_name}' not found in the system.")
+                    continue
+                    
+                if generator_name in running_generators:
+                    continue
+                    
+                try:
+                    engine.start_generator(generator_name)
+                    running_generators.add(generator_name)
+                    any_started = True
+                except Exception as e:
+                    click.echo(f"Error starting generator '{generator_name}': {e}")
+                    
+            if any_started:
+                click.echo("Started all available generators.")
+            else:
+                click.echo("No generators were started.")
+                
+            click.pause()
+            
+        elif choice == 4:
+            # Stop all generators
+            if not running_generators:
+                click.echo("No generators are currently running.")
+                click.pause()
+                continue
+                
+            for generator_name in list(running_generators):
+                try:
+                    engine.stop_generator(generator_name)
+                    running_generators.remove(generator_name)
+                except Exception as e:
+                    click.echo(f"Error stopping generator '{generator_name}': {e}")
+                    
+            click.echo("All generators stopped.")
+            click.pause()
+            
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def select_generator_to_control(generators, action):
+    """Prompt the user to select a generator.
+    
+    Args:
+        generators: List of generators
+        action: Action to perform on the generator (for display purposes)
+        
+    Returns:
+        Index of the selected generator, or -1 if cancelled
+    """
+    click.clear()
+    click.echo(click.style(f"Select Generator to {action.title()}", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    # Display generators
+    for i, generator in enumerate(generators, 1):
+        click.echo(f"{i}. {generator}")
+        
+    click.echo("")
+    click.echo("0. Cancel")
+    
+    choice = click.prompt("Select a generator", type=int, default=0)
+    
+    if choice == 0:
+        return -1
+    elif 1 <= choice <= len(generators):
+        return choice - 1
+    else:
+        click.echo("Invalid choice.")
+        click.pause()
+        return -1
 
 
 def main():

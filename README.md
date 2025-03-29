@@ -9,7 +9,7 @@ Logforge is a Python-based application for generating synthetic but realistic ev
 - Uses Jinja templates for log definition
 - Supports multiple log formats including JSON, syslog, XML, and others
 - Supports multiple outputs (stdout, flat file, HTTP)
-- Allows collaborators to easily add tech packages without modifying core code
+- Allows collaborators to easily add new log types using only template files
 - Supports multiple data sources per vendor
 - Can run manually/headless, as a systemd service, or via a CLI menu
 - Allows users to add or remove log generators at runtime
@@ -102,7 +102,77 @@ To run Logforge as a systemd service:
 
 ## Extending
 
-Logforge is designed to be easily extended with new log generators. See the `packages` directory for examples of how to implement new log generators.
+Logforge is designed to be easily extended with new log generators using a template-based approach that requires no coding.
+
+### Adding Custom Data Sources
+
+Logforge now uses a template-only approach to create log generators. This simplifies the process of adding new log types without writing any code.
+
+#### Creating Templates and Metadata
+
+To add a new log type:
+
+1. Create a template file in the `templates` directory following the vendor/product/data_source structure
+2. Add a corresponding `.meta.yaml` file with the same name
+3. Logforge automatically discovers and creates generators from these templates
+
+Example directory structure:
+```
+templates/
+└── apache/
+    └── webserver/
+        ├── access.json
+        ├── access.meta.yaml
+        ├── error.json
+        └── error.meta.yaml
+```
+
+Example metadata file (`access.meta.yaml`):
+```yaml
+vendor: Apache
+product: Webserver
+data_source: Access Logs
+description: Common Apache access logs in JSON format
+format: JSON
+
+# Generator settings
+is_generator: true
+base_frequency: 0.5
+time_patterns:
+  - business_hours
+  - night_hours
+business_hours_multiplier: 2.0
+night_hours_multiplier: 0.3
+
+# Context values for template variables
+context:
+  server_name: www.example.com
+  protocol: HTTP/1.1
+```
+
+#### Custom Plugins (For Special Cases)
+
+For log generation that requires custom logic beyond what templates can provide, you can create an external plugin:
+
+1. Create a Python package for your custom generator
+2. Implement a generator class that inherits from `LogGenerator`
+3. Register your generator using entry points
+
+Example `setup.py` for an external plugin:
+```python
+setup(
+    name="my_custom_plugin",
+    version="0.1.0",
+    packages=find_packages(),
+    entry_points={
+        "synth_logs.generators": [
+            "custom_generator=my_plugin.generators:CustomGenerator",
+        ],
+    },
+)
+```
+
+The template-only approach is recommended for most use cases and requires no coding, just template files.
 
 ### Template Metadata
 
@@ -115,9 +185,25 @@ data_source: Security Login Success
 description: Windows Security successful login events (EventID 4624)
 format: XML
 frequency: high
+
+# Generator settings for template-based generators
+is_generator: true
+base_frequency: 0.2
+time_patterns:
+  - business_hours
+  - night_hours
+  - weekend
+business_hours_multiplier: 2.0
+night_hours_multiplier: 0.3
+weekend_multiplier: 0.5
+
+# Context values for rendering
 context:
   event_id: 4624
   logon_type: 2
+  session_id: 1
+
+# Parameter definitions
 parameters:
   - name: username
     description: The username of the user logging in
@@ -127,7 +213,22 @@ parameters:
     required: true
 ```
 
-This metadata is used by the interactive configuration menu to provide a user-friendly way to browse and select templates. Metadata files are automatically discovered alongside templates.
+This metadata serves multiple purposes:
+1. Powers the interactive configuration menu
+2. Creates template-based generators automatically
+3. Controls generation frequency and patterns
+4. Provides default context values for templates
+
+Metadata files are automatically discovered alongside templates with the same name but with `.meta.yaml` extension.
+
+### Generators vs Templates
+
+In Logforge, each template file with its metadata creates a generator. For example:
+
+- `templates/windows/security/login_success.xml` with `login_success.meta.yaml` creates a `windows_security_login_success` generator
+- `templates/windows/security/login_failure.xml` with `login_failure.meta.yaml` creates a `windows_security_login_failure` generator
+
+Each generator focuses on producing one specific type of log entry based on its template. When using the interactive configuration menu, you'll see all available generators grouped by vendor and product.
 
 ## License
 

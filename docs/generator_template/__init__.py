@@ -1,0 +1,1 @@
+# This is a template package for creating new log generators
