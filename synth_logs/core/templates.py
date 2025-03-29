@@ -7,9 +7,11 @@ import os
 import random
 import string
 import uuid
-from typing import Dict, Any, Optional, List
+import glob
+from typing import Dict, Any, Optional, List, Tuple
 
 import jinja2
+import yaml
 
 from synth_logs.core.registry import EntityRegistry
 
@@ -32,6 +34,7 @@ class TemplateManager:
             
         self.template_dirs = template_dirs
         self.environment = self._create_environment()
+        self.metadata_cache = {}
         
     def _create_environment(self) -> jinja2.Environment:
         """Create a Jinja2 environment.
@@ -227,3 +230,129 @@ class TemplateManager:
             dt = datetime.datetime.fromtimestamp(timestamp)
             
         return dt.strftime(format_str)
+        
+    def get_template_metadata(self, template_path: str) -> Dict[str, Any]:
+        """Get metadata for a template.
+        
+        Args:
+            template_path: Path to the template (relative to template_dirs)
+            
+        Returns:
+            Dictionary containing template metadata
+        """
+        # If we have the metadata in the cache, return it
+        if template_path in self.metadata_cache:
+            return self.metadata_cache[template_path]
+            
+        # Look for a .meta.yaml file next to the template
+        metadata = {}
+        for template_dir in self.template_dirs:
+            full_path = os.path.join(template_dir, template_path)
+            meta_path = os.path.splitext(full_path)[0] + '.meta.yaml'
+            
+            if os.path.exists(meta_path):
+                try:
+                    with open(meta_path, 'r') as f:
+                        metadata = yaml.safe_load(f) or {}
+                    break
+                except Exception as e:
+                    logger.error(f"Error loading metadata for {template_path}: {e}")
+                    
+        # Set default metadata if not provided
+        if not metadata:
+            # Extract the product name and type from the path
+            parts = template_path.split('/')
+            if len(parts) >= 2:
+                vendor = parts[0]
+                product = parts[1] if len(parts) > 1 else ''
+                event_type = os.path.splitext(os.path.basename(template_path))[0]
+                
+                metadata = {
+                    'vendor': vendor.title(),
+                    'product': product.title(),
+                    'data_source': event_type.replace('_', ' ').title(),
+                    'description': f'{vendor.title()} {product.title()} {event_type.replace("_", " ").title()} Events'
+                }
+                
+        # Cache the metadata
+        self.metadata_cache[template_path] = metadata
+        return metadata
+        
+    def discover_templates(self) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+        """Discover all available templates and their metadata.
+        
+        Returns:
+            A nested dictionary of vendors -> products -> template metadata
+        """
+        templates = {}
+        
+        for template_dir in self.template_dirs:
+            if not os.path.exists(template_dir):
+                continue
+                
+            # Walk the template directory
+            for root, _, files in os.walk(template_dir):
+                for file in files:
+                    # Skip metadata files
+                    if file.endswith('.meta.yaml'):
+                        continue
+                        
+                    # Get the relative path to the template
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, template_dir)
+                    
+                    # Get metadata for the template
+                    metadata = self.get_template_metadata(rel_path)
+                    
+                    vendor = metadata.get('vendor', 'Unknown')
+                    product = metadata.get('product', 'Unknown')
+                    
+                    # Add the template to the dictionary
+                    if vendor not in templates:
+                        templates[vendor] = {}
+                    if product not in templates[vendor]:
+                        templates[vendor][product] = []
+                        
+                    template_info = {
+                        'path': rel_path,
+                        'data_source': metadata.get('data_source', 'Unknown'),
+                        'description': metadata.get('description', ''),
+                        'metadata': metadata
+                    }
+                    
+                    templates[vendor][product].append(template_info)
+                    
+        return templates
+        
+    def create_metadata_file(self, template_path: str, metadata: Dict[str, Any]) -> bool:
+        """Create or update a metadata file for a template.
+        
+        Args:
+            template_path: Path to the template (relative to template_dirs)
+            metadata: Dictionary containing template metadata
+            
+        Returns:
+            True if the metadata file was created/updated successfully, False otherwise
+        """
+        for template_dir in self.template_dirs:
+            full_path = os.path.join(template_dir, template_path)
+            if os.path.exists(full_path):
+                meta_path = os.path.splitext(full_path)[0] + '.meta.yaml'
+                
+                try:
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(meta_path), exist_ok=True)
+                    
+                    # Write the metadata file
+                    with open(meta_path, 'w') as f:
+                        yaml.dump(metadata, f, default_flow_style=False)
+                        
+                    # Update the cache
+                    self.metadata_cache[template_path] = metadata
+                    return True
+                except Exception as e:
+                    logger.error(f"Error creating metadata file for {template_path}: {e}")
+                    return False
+                    
+        logger.error(f"Template path not found: {template_path}")
+        return False

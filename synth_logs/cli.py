@@ -292,6 +292,251 @@ WantedBy=multi-user.target
         sys.exit(1)
 
 
+@cli.command()
+@click.option('--config', '-c', required=True, type=click.Path(exists=True), 
+              help='Path to configuration file')
+@click.pass_context
+def configure(ctx, config):
+    """Interactive configuration tool for the log generator."""
+    from synth_logs.core.templates import TemplateManager
+    
+    # Load the current configuration
+    config_data = load_config(config)
+    
+    # Create a template manager
+    template_manager = TemplateManager()
+    
+    # Discover available templates
+    templates = template_manager.discover_templates()
+    
+    # Get currently active generators
+    active_generators = config_data.get('active_generators', [])
+    
+    while True:
+        click.clear()
+        click.echo(click.style("🪵 Logforge Configuration Menu", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display active generators
+        click.echo(click.style("Active Generators:", fg='blue', bold=True))
+        if active_generators:
+            for i, generator in enumerate(active_generators, 1):
+                click.echo(f"{i}. {generator}")
+        else:
+            click.echo("  No active generators")
+        
+        click.echo("")
+        click.echo(click.style("Options:", fg='yellow'))
+        click.echo("1. Add generator")
+        click.echo("2. Remove generator")
+        click.echo("3. Save configuration")
+        click.echo("4. Exit")
+        
+        choice = click.prompt("Select an option", type=int, default=1)
+        
+        if choice == 1:
+            # Add generator
+            add_generator_menu(templates, active_generators)
+        elif choice == 2:
+            # Remove generator
+            if active_generators:
+                remove_generator_menu(active_generators)
+            else:
+                click.echo("No generators to remove.")
+                click.pause()
+        elif choice == 3:
+            # Save configuration
+            config_data['active_generators'] = active_generators
+            
+            try:
+                with open(config, 'w') as f:
+                    yaml.dump(config_data, f, default_flow_style=False)
+                click.echo(click.style("Configuration saved successfully!", fg='green'))
+            except Exception as e:
+                click.echo(click.style(f"Error saving configuration: {e}", fg='red'))
+                
+            click.pause()
+        elif choice == 4:
+            # Exit
+            if config_data.get('active_generators') != active_generators:
+                save = click.confirm("Configuration has changed. Save before exiting?", default=True)
+                if save:
+                    config_data['active_generators'] = active_generators
+                    try:
+                        with open(config, 'w') as f:
+                            yaml.dump(config_data, f, default_flow_style=False)
+                        click.echo(click.style("Configuration saved successfully!", fg='green'))
+                    except Exception as e:
+                        click.echo(click.style(f"Error saving configuration: {e}", fg='red'))
+            break
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def add_generator_menu(templates, active_generators):
+    """Display a menu for adding generators.
+    
+    Args:
+        templates: Dictionary of available templates
+        active_generators: List of active generators
+    """
+    while True:
+        click.clear()
+        click.echo(click.style("Add Generator", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display available vendors
+        click.echo(click.style("Available Vendors:", fg='blue', bold=True))
+        vendors = list(templates.keys())
+        for i, vendor in enumerate(vendors, 1):
+            click.echo(f"{i}. {vendor}")
+            
+        click.echo("")
+        click.echo("0. Back")
+        
+        choice = click.prompt("Select a vendor", type=int, default=0)
+        
+        if choice == 0:
+            return
+        elif 1 <= choice <= len(vendors):
+            vendor = vendors[choice - 1]
+            select_product_menu(vendor, templates[vendor], active_generators)
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def select_product_menu(vendor, products, active_generators):
+    """Display a menu for selecting a product.
+    
+    Args:
+        vendor: Vendor name
+        products: Dictionary of available products for the vendor
+        active_generators: List of active generators
+    """
+    while True:
+        click.clear()
+        click.echo(click.style(f"Select {vendor} Product", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display available products
+        click.echo(click.style("Available Products:", fg='blue', bold=True))
+        product_names = list(products.keys())
+        for i, product_name in enumerate(product_names, 1):
+            click.echo(f"{i}. {product_name}")
+            
+        click.echo("")
+        click.echo("0. Back")
+        
+        choice = click.prompt("Select a product", type=int, default=0)
+        
+        if choice == 0:
+            return
+        elif 1 <= choice <= len(product_names):
+            product = product_names[choice - 1]
+            select_template_menu(vendor, product, products[product], active_generators)
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def select_template_menu(vendor, product, templates, active_generators):
+    """Display a menu for selecting a template.
+    
+    Args:
+        vendor: Vendor name
+        product: Product name
+        templates: List of available templates for the product
+        active_generators: List of active generators
+    """
+    while True:
+        click.clear()
+        click.echo(click.style(f"Select {vendor} {product} Template", fg='green', bold=True))
+        click.echo(click.style("=" * 50, fg='green'))
+        click.echo("")
+        
+        # Display available templates
+        click.echo(click.style("Available Templates:", fg='blue', bold=True))
+        for i, template in enumerate(templates, 1):
+            # Create a generator name from the path
+            path_parts = template['path'].split('/')
+            generator_name = '_'.join(path_parts)
+            generator_name = os.path.splitext(generator_name)[0]
+            
+            # Check if the generator is already active
+            status = "[Active]" if generator_name in active_generators else ""
+            
+            click.echo(f"{i}. {template['data_source']} {status}")
+            click.echo(f"   Description: {template['description']}")
+            click.echo("")
+            
+        click.echo("0. Back")
+        
+        choice = click.prompt("Select a template", type=int, default=0)
+        
+        if choice == 0:
+            return
+        elif 1 <= choice <= len(templates):
+            template = templates[choice - 1]
+            
+            # Create a generator name from the path
+            path_parts = template['path'].split('/')
+            generator_name = '_'.join(path_parts)
+            generator_name = os.path.splitext(generator_name)[0]
+            
+            # Check if the generator is already active
+            if generator_name in active_generators:
+                click.echo(f"Generator '{generator_name}' is already active.")
+                click.pause()
+                continue
+                
+            # Add the generator
+            active_generators.append(generator_name)
+            click.echo(click.style(f"Added generator: {generator_name}", fg='green'))
+            click.pause()
+            return
+        else:
+            click.echo("Invalid option.")
+            click.pause()
+
+
+def remove_generator_menu(active_generators):
+    """Display a menu for removing generators.
+    
+    Args:
+        active_generators: List of active generators
+    """
+    click.clear()
+    click.echo(click.style("Remove Generator", fg='green', bold=True))
+    click.echo(click.style("=" * 50, fg='green'))
+    click.echo("")
+    
+    # Display active generators
+    click.echo(click.style("Active Generators:", fg='blue', bold=True))
+    for i, generator in enumerate(active_generators, 1):
+        click.echo(f"{i}. {generator}")
+        
+    click.echo("")
+    click.echo("0. Back")
+    
+    choice = click.prompt("Select a generator to remove", type=int, default=0)
+    
+    if choice == 0:
+        return
+    elif 1 <= choice <= len(active_generators):
+        generator = active_generators[choice - 1]
+        active_generators.remove(generator)
+        click.echo(click.style(f"Removed generator: {generator}", fg='green'))
+        click.pause()
+    else:
+        click.echo("Invalid option.")
+        click.pause()
+
+
 def main():
     """Main entry point."""
     cli(obj={})

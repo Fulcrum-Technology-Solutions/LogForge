@@ -61,6 +61,9 @@ synth-logs list-generators --config config.yaml
 
 # Create a systemd service
 synth-logs create-service --config /absolute/path/to/config.yaml --user logforge
+
+# Interactive configuration menu
+synth-logs configure --config config.yaml
 ```
 
 ### Log File Output
@@ -100,6 +103,31 @@ To run Logforge as a systemd service:
 ## Extending
 
 Logforge is designed to be easily extended with new log generators. See the `packages` directory for examples of how to implement new log generators.
+
+### Template Metadata
+
+Each template can have a metadata file (`.meta.yaml`) that provides additional information about the template:
+
+```yaml
+vendor: Microsoft
+product: Windows
+data_source: Security Login Success
+description: Windows Security successful login events (EventID 4624)
+format: XML
+frequency: high
+context:
+  event_id: 4624
+  logon_type: 2
+parameters:
+  - name: username
+    description: The username of the user logging in
+    required: true
+  - name: domain
+    description: The domain of the user
+    required: true
+```
+
+This metadata is used by the interactive configuration menu to provide a user-friendly way to browse and select templates. Metadata files are automatically discovered alongside templates.
 
 ## License
 
