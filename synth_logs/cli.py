@@ -111,28 +111,52 @@ def setup_engine(config: dict) -> Engine:
     # Configure outputs
     outputs_config = config.get('outputs', [])
     
-    # If no outputs are configured, add a default file output
+    # If no outputs are configured, ask the user what to use as default
     if not outputs_config:
-        click.echo("No outputs configured in config file. Adding default file output.")
+        click.echo("No outputs configured in config file.")
         
-        # Create a default output configuration
-        default_output = {
-            "type": "file",
-            "name": "default_file_output",
-            "file_path": "logs/synth_logs.json",
-            "hourly_rotation": True,
-            "data_source_field": "generator"
-        }
+        if click.confirm("Would you like to use HTTP output instead of the default file output?", default=False):
+            # Create a default HTTP output configuration
+            default_output = {
+                "type": "http",
+                "name": "http_output",
+                "url": click.prompt("Enter HTTP endpoint URL", default="http://localhost:8080/api/logs"),
+                "method": "POST",
+                "headers": {"Content-Type": "application/json"},
+                "retry_count": 3,
+                "retry_delay": 1.0,
+                "timeout": 10.0
+            }
+            
+            # Add it to the engine
+            engine.add_output(HttpAdapter(
+                url=default_output["url"],
+                name=default_output["name"],
+                method=default_output["method"],
+                headers=default_output["headers"],
+                retry_count=default_output["retry_count"],
+                retry_delay=default_output["retry_delay"],
+                timeout=default_output["timeout"]
+            ))
+        else:
+            # Create a default file output configuration
+            default_output = {
+                "type": "file",
+                "name": "default_file_output",
+                "file_path": "logs/synth_logs.json",
+                "hourly_rotation": True,
+                "data_source_field": "generator"
+            }
+            
+            # Add it to the engine
+            engine.add_output(FileAdapter(
+                file_path=default_output["file_path"],
+                name=default_output["name"],
+                hourly_rotation=default_output["hourly_rotation"],
+                data_source_field=default_output["data_source_field"]
+            ))
         
-        # Add it to the engine
-        engine.add_output(FileAdapter(
-            file_path=default_output["file_path"],
-            name=default_output["name"],
-            hourly_rotation=default_output["hourly_rotation"],
-            data_source_field=default_output["data_source_field"]
-        ))
-        
-        # Add it to the configuration so it will be saved
+        # Add the chosen output to the configuration so it will be saved
         config.setdefault('outputs', []).append(default_output)
         
     for output_config in outputs_config:

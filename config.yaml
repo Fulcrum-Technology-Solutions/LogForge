@@ -5,18 +5,26 @@ entity_registry: "entities.yaml"
 
 # Output configuration
 outputs:
-  - type: file
-    name: file_output
-    file_path: "logs/synth_logs.json"
-    max_size: 10485760  # 10MB
-    backup_count: 5
-    # Enable hourly rotation with timestamp in filename
-    hourly_rotation: true
-    # Field in log entry to identify the data source
-    data_source_field: "generator"
-  # Console output is commented out by default
-  # - type: stdout
-  #   name: console
+  # File output is commented out to use HTTP only
+  # - type: file
+  #   name: file_output
+  #   file_path: "logs/synth_logs.json"
+  #   max_size: 10485760  # 10MB
+  #   backup_count: 5
+  #   hourly_rotation: true
+  #   data_source_field: "generator"
+  
+  # HTTP output
+  - type: http
+    name: http_output
+    url: "http://localhost:8080/api/logs"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+    retry_count: 3
+    retry_delay: 1.0
+    timeout: 10.0
+    verify_ssl: true
 
 # Time patterns
 time_patterns:
@@ -40,8 +48,7 @@ time_patterns:
     multiplier: 0.5
 
 # Active generators - uncomment and add generators as needed
-active_generators: []
-# Examples:
-#  - microsoft_windows_security_login_success
-#  - paloalto_firewall_traffic
-#  - paloalto_firewall_threat
+active_generators: 
+  - microsoft_windows_security_login_success
+  - microsoft_windows_system_service_start
+  - paloalto_traffic_session
