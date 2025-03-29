@@ -148,6 +148,24 @@ class TemplateBasedGenerator(LogGenerator):
                 registry,
                 context
             )
+            
+            # For XML templates: wrap in JSON wrapper if not already JSON
+            if self.template_path.endswith('.xml') and not rendered.strip().startswith('{'):
+                # Create a JSON wrapper for XML content to ensure generator field is accessible
+                import json
+                wrapper = {
+                    "generator": self.name,
+                    "timestamp": context['timestamp'],
+                    "content_type": "xml",
+                    "content": rendered
+                }
+                return json.dumps(wrapper)
+                
+            # For non-JSON templates: ensure generator field is present
+            if not rendered.strip().startswith('{'):
+                # Add a header line with generator info
+                return f"GENERATOR:{self.name}\n{rendered}"
+                
             return rendered
         except Exception as e:
             logger.error(f"Error rendering template for {self.name}: {e}")

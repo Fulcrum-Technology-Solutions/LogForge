@@ -166,6 +166,13 @@ class FileAdapter(OutputAdapter):
         # Fallback extraction using basic string search
         import re
         
+        # Check for the GENERATOR: header line (our custom format)
+        if log_entry.startswith("GENERATOR:"):
+            first_line = log_entry.split('\n')[0]
+            generator_name = first_line.replace("GENERATOR:", "").strip()
+            logger.info(f"Found generator in header line: {generator_name}")
+            return generator_name
+        
         # Try multiple patterns to find the generator field
         
         # Pattern 1: Look for "generator": "something" or 'generator': 'something'
@@ -174,15 +181,26 @@ class FileAdapter(OutputAdapter):
         
         # Pattern 2: Look for generator name in a more specific format
         if not generator_matches:
-            generator_pattern2 = r'microsoft_windows_security_([a-z_]+)'
-            generator_matches2 = re.search(generator_pattern2, log_entry)
-            if generator_matches2:
-                return f"microsoft_windows_security_{generator_matches2.group(1)}"
+            # Look for specific generator patterns in the content
+            pattern_checks = [
+                # Windows Security logs
+                (r'microsoft_windows_security_([a-z_]+)', 'microsoft_windows_security_{}'),
+                # Windows System logs
+                (r'microsoft_windows_system_([a-z_]+)', 'microsoft_windows_system_{}'),
+                # Windows Application logs
+                (r'microsoft_windows_application_([a-z_]+)', 'microsoft_windows_application_{}'),
+                # PaloAlto logs
+                (r'paloalto_firewall_([a-z_]+)', 'paloalto_firewall_{}'),
+                # Azure logs
+                (r'azure_([a-z_]+)', 'azure_{}')
+            ]
             
-            generator_pattern3 = r'paloalto_firewall_([a-z_]+)'
-            generator_matches3 = re.search(generator_pattern3, log_entry)
-            if generator_matches3:
-                return f"paloalto_firewall_{generator_matches3.group(1)}"
+            for pattern, template in pattern_checks:
+                matches = re.search(pattern, log_entry)
+                if matches:
+                    result = template.format(matches.group(1))
+                    logger.info(f"Found generator via pattern '{pattern}': {result}")
+                    return result
         
         if generator_matches:
             # Extract the generator name from the regex match
@@ -225,16 +243,34 @@ class FileAdapter(OutputAdapter):
         
         # Identify Windows Event Logs
         if "Windows-Security-Auditing" in log_entry:
-            # Look for specific EventIDs to get more specific generator names
-            if "<EventID>4624</EventID>" in log_entry or "LogonType" in log_entry or "Logon Type" in log_entry:
+            # Extract Event ID if possible
+            event_id_match = re.search(r'<EventID[^>]*>(\d+)</EventID>', log_entry)
+            event_id = event_id_match.group(1) if event_id_match else None
+            
+            logger.info(f"Found Windows Security Auditing event with ID: {event_id}")
+            
+            # Map Event IDs to generator types
+            event_id_map = {
+                "4624": "microsoft_windows_security_login_success",
+                "4625": "microsoft_windows_security_login_failure",
+                "4740": "microsoft_windows_security_account_locked",
+                "4672": "microsoft_windows_security_privilege_use",
+                "4688": "microsoft_windows_security_process_creation"
+            }
+            
+            if event_id and event_id in event_id_map:
+                return event_id_map[event_id]
+            
+            # Fallback to content-based checks
+            elif "LogonType" in log_entry or "Logon Type" in log_entry:
                 return "microsoft_windows_security_login_success"
-            elif "<EventID>4625</EventID>" in log_entry or "Logon Failed" in log_entry:
+            elif "Logon Failed" in log_entry:
                 return "microsoft_windows_security_login_failure"
-            elif "<EventID>4740</EventID>" in log_entry or "Account Locked" in log_entry:
+            elif "Account Locked" in log_entry:
                 return "microsoft_windows_security_account_locked"
-            elif "<EventID>4672</EventID>" in log_entry or "Privilege" in log_entry:
+            elif "Privilege" in log_entry:
                 return "microsoft_windows_security_privilege_use"
-            elif "<EventID>4688</EventID>" in log_entry or "Process Creation" in log_entry:
+            elif "Process Creation" in log_entry:
                 return "microsoft_windows_security_process_creation"
             else:
                 return "microsoft_windows_security"
