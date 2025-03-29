@@ -1,6 +1,7 @@
 """Command-line interface for the synthetic log generator."""
 
 import logging
+import logging.handlers
 import os
 import sys
 import time
@@ -21,12 +22,48 @@ def configure_logging(verbose: bool):
     Args:
         verbose: Whether to enable verbose logging
     """
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join(os.getcwd(), 'app_logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Set up log level based on verbose flag
     log_level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler()]
+    
+    # Create rotating file handler for detailed logs
+    log_file = os.path.join(log_dir, 'logforge.log')
+    file_handler = logging.handlers.RotatingFileHandler(
+        filename=log_file,
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
     )
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    
+    # Create console handler for important logs only (warning and above)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+    console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console_handler.setFormatter(console_formatter)
+    
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    
+    # Remove any existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        
+    # Add our handlers
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # Log startup information
+    logging.info(f"Logging initialized. Log file: {log_file}")
+    if verbose:
+        logging.info("Verbose logging enabled (DEBUG level)")
+    else:
+        logging.info("Normal logging level (INFO level)")
 
 
 def load_config(config_path: str) -> dict:

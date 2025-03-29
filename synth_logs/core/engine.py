@@ -139,7 +139,7 @@ class TemplateBasedGenerator(LogGenerator):
         # Log template context for debugging
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"Rendering template for {self.name} with generator name: {context.get('generator', 'unknown')}")
+        logger.debug(f"Rendering template for {self.name} with generator name: {context.get('generator', 'unknown')}")
         
         # Render the template
         try:

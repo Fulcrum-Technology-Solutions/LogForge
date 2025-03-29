@@ -63,7 +63,7 @@ class FileAdapter(OutputAdapter):
         # Use a default name if data source is not provided
         effective_data_source = data_source if data_source else "default"
         
-        logger.info(f"Getting file path for data source: {effective_data_source}")
+        logger.debug(f"Getting file path for data source: {effective_data_source}")
         
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
@@ -161,7 +161,7 @@ class FileAdapter(OutputAdapter):
             logger.info(f"No data source field configured.")
             return None
         
-        logger.info(f"Extracting data source using field: {self.data_source_field}")
+        logger.debug(f"Extracting data source using field: {self.data_source_field}")
         
         # Fallback extraction using basic string search
         import re
@@ -170,7 +170,7 @@ class FileAdapter(OutputAdapter):
         if log_entry.startswith("GENERATOR:"):
             first_line = log_entry.split('\n')[0]
             generator_name = first_line.replace("GENERATOR:", "").strip()
-            logger.info(f"Found generator in header line: {generator_name}")
+            logger.debug(f"Found generator in header line: {generator_name}")
             return generator_name
         
         # Try multiple patterns to find the generator field
@@ -199,13 +199,13 @@ class FileAdapter(OutputAdapter):
                 matches = re.search(pattern, log_entry)
                 if matches:
                     result = template.format(matches.group(1))
-                    logger.info(f"Found generator via pattern '{pattern}': {result}")
+                    logger.debug(f"Found generator via pattern '{pattern}': {result}")
                     return result
         
         if generator_matches:
             # Extract the generator name from the regex match
             generator_name = generator_matches.group(1)
-            logger.info(f"Found generator name via regex: {generator_name}")
+            logger.debug(f"Found generator name via regex: {generator_name}")
             
             # Clean up generator name for use in filenames
             for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
@@ -221,19 +221,19 @@ class FileAdapter(OutputAdapter):
             
             data = json.loads(fixed_entry)
             
-            logger.info(f"Log entry parsed as JSON with keys: {list(data.keys())}")
+            logger.debug(f"Log entry parsed as JSON with keys: {list(data.keys())}")
             
             if self.data_source_field in data:
                 # Clean up generator name for use in filenames
                 generator_name = str(data[self.data_source_field])
-                logger.info(f"Found generator name via JSON: {generator_name}")
+                logger.debug(f"Found generator name via JSON: {generator_name}")
                 
                 # Replace special characters that shouldn't be in filenames
                 for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
                     generator_name = generator_name.replace(char, '_')
                 return generator_name
             else:
-                logger.info(f"Field '{self.data_source_field}' not found in JSON data")
+                logger.debug(f"Field '{self.data_source_field}' not found in JSON data")
         except (json.JSONDecodeError, AttributeError, TypeError) as e:
             # Log the error for debugging
             logger.warning(f"Could not extract data source from log entry using JSON: {e}")
@@ -247,7 +247,7 @@ class FileAdapter(OutputAdapter):
             event_id_match = re.search(r'<EventID[^>]*>(\d+)</EventID>', log_entry)
             event_id = event_id_match.group(1) if event_id_match else None
             
-            logger.info(f"Found Windows Security Auditing event with ID: {event_id}")
+            logger.debug(f"Found Windows Security Auditing event with ID: {event_id}")
             
             # Map Event IDs to generator types
             event_id_map = {
@@ -319,11 +319,11 @@ class FileAdapter(OutputAdapter):
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        logger.info(f"Sending log entry to file, length: {len(log_entry)}")
+        logger.debug(f"Sending log entry to file, length: {len(log_entry)}")
         
         # Extract data source if configured
         data_source = self._extract_data_source(log_entry)
-        logger.info(f"Extracted data source: {data_source}")
+        logger.debug(f"Extracted data source: {data_source}")
         
         key = data_source or '_default'
         
@@ -332,11 +332,11 @@ class FileAdapter(OutputAdapter):
         
         # Get the file path for debugging purposes
         file_path = self._get_file_path(data_source)
-        logger.info(f"Using file path: {file_path}")
+        logger.debug(f"Using file path: {file_path}")
         
         # Open file if not already open
         if key not in self.files or not self.files[key]:
-            logger.info(f"Opening file for data source: {data_source}")
+            logger.info(f"Opening file: {file_path}")
             self._open_file(data_source)
         
         if not self.files.get(key):
