@@ -881,7 +881,32 @@ def configure_http_output():
     
     # Headers
     headers = {}
-    click.echo("\nConfigure Headers (leave name empty to finish):")
+    
+    # Add default Content-Type header
+    content_type = click.prompt("Content-Type header", default="application/json")
+    headers["Content-Type"] = content_type
+    
+    # Ask about authentication
+    use_auth = click.confirm("Use authentication?", default=False)
+    if use_auth:
+        auth_type = click.prompt("Authentication type", type=click.Choice(["Bearer", "Basic", "API Key", "Custom"]), default="Bearer")
+        
+        if auth_type == "Bearer":
+            token = click.prompt("Bearer token", hide_input=True)
+            headers["Authorization"] = f"Bearer {token}"
+        elif auth_type == "Basic":
+            username = click.prompt("Username")
+            password = click.prompt("Password", hide_input=True)
+            import base64
+            auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_string}"
+        elif auth_type == "API Key":
+            key_name = click.prompt("API key header name", default="X-API-Key")
+            key_value = click.prompt("API key value", hide_input=True)
+            headers[key_name] = key_value
+    
+    # Additional custom headers
+    click.echo("\nConfigure Additional Headers (leave name empty to finish):")
     while True:
         header_name = click.prompt("Header name", default="")
         if not header_name:

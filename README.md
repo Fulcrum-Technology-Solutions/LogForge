@@ -46,11 +46,21 @@ outputs:
     hourly_rotation: true
     # Field in log entry to identify the data source
     data_source_field: "generator"
+  - type: http
+    name: api_output
+    url: "https://api.example.com/logs"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer YOUR_API_TOKEN_HERE"
+    retry_count: 3
+    retry_delay: 1.0
 
 # Active generators
 active_generators:
-  - windows_security
-  - windows_system
+  - microsoft_windows_security_login_success
+  - microsoft_windows_system_service_start
+  - paloalto_traffic_session
 ```
 
 ## Usage
@@ -87,6 +97,42 @@ logs/
   ├── paloalto_firewall_traffic_20250329_14_synth_logs.json
   └── paloalto_firewall_traffic_20250329_15_synth_logs.json
 ```
+
+### HTTP Output with Authentication
+
+Logforge supports several authentication methods for the HTTP output adapter:
+
+1. **Bearer Token Authentication**:
+   ```yaml
+   outputs:
+     - type: http
+       name: api_output
+       url: "https://api.example.com/logs"
+       headers:
+         Authorization: "Bearer YOUR_TOKEN_HERE"
+   ```
+
+2. **Basic Authentication**:
+   ```yaml
+   outputs:
+     - type: http
+       name: api_output
+       url: "https://api.example.com/logs"
+       headers:
+         Authorization: "Basic BASE64_ENCODED_CREDENTIALS"
+   ```
+
+3. **API Key Authentication**:
+   ```yaml
+   outputs:
+     - type: http
+       name: api_output
+       url: "https://api.example.com/logs"
+       headers:
+         X-API-Key: "YOUR_API_KEY_HERE"
+   ```
+
+The interactive CLI menu provides a guided setup for these authentication methods.
 
 ### Systemd Service
 
