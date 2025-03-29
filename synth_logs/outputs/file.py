@@ -60,18 +60,17 @@ class FileAdapter(OutputAdapter):
         base_dir = os.path.dirname(os.path.abspath(self.file_path))
         base_name = os.path.basename(self.file_path)
         
+        # Use a default name if data source is not provided
+        effective_data_source = data_source if data_source else "default"
+        
+        logger.info(f"Getting file path for data source: {effective_data_source}")
+        
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
             timestamp = datetime.now().strftime("%Y%m%d_%H")
-            if data_source:
-                return os.path.join(base_dir, f"{data_source}_{timestamp}_{base_name}")
-            else:
-                return os.path.join(base_dir, f"{timestamp}_{base_name}")
+            return os.path.join(base_dir, f"{effective_data_source}_{timestamp}_{base_name}")
         else:
-            if data_source:
-                return os.path.join(base_dir, f"{data_source}_{base_name}")
-            else:
-                return self.file_path
+            return os.path.join(base_dir, f"{effective_data_source}_{base_name}")
     
     def _open_file(self, data_source: str = None):
         """Open the file for writing.
@@ -159,23 +158,33 @@ class FileAdapter(OutputAdapter):
             The data source name or None if not found/applicable
         """
         if not self.data_source_field:
+            logger.info(f"No data source field configured.")
             return None
+        
+        logger.info(f"Extracting data source using field: {self.data_source_field}")
             
         # Simple check for JSON format with data source field
         try:
             import json
             data = json.loads(log_entry)
+            
+            logger.info(f"Log entry parsed as JSON with keys: {list(data.keys())}")
+            
             if self.data_source_field in data:
                 # Clean up generator name for use in filenames
                 generator_name = str(data[self.data_source_field])
+                logger.info(f"Found generator name: {generator_name}")
+                
                 # Replace special characters that shouldn't be in filenames
                 for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
                     generator_name = generator_name.replace(char, '_')
                 return generator_name
-        except (json.JSONDecodeError, AttributeError, TypeError):
+            else:
+                logger.info(f"Field '{self.data_source_field}' not found in JSON data")
+        except (json.JSONDecodeError, AttributeError, TypeError) as e:
             # Log the error for debugging
-            logger.debug(f"Could not extract data source from log entry: {log_entry[:100]}...")
-            pass
+            logger.warning(f"Could not extract data source from log entry: {e}")
+            logger.debug(f"Log entry content (first 100 chars): {log_entry[:100]}...")
             
         return None
         
@@ -188,15 +197,24 @@ class FileAdapter(OutputAdapter):
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
+        logger.info(f"Sending log entry to file, length: {len(log_entry)}")
+        
         # Extract data source if configured
         data_source = self._extract_data_source(log_entry)
+        logger.info(f"Extracted data source: {data_source}")
+        
         key = data_source or '_default'
         
         # Check for hourly rotation
         self._check_hour_rotation(data_source)
         
+        # Get the file path for debugging purposes
+        file_path = self._get_file_path(data_source)
+        logger.info(f"Using file path: {file_path}")
+        
         # Open file if not already open
         if key not in self.files or not self.files[key]:
+            logger.info(f"Opening file for data source: {data_source}")
             self._open_file(data_source)
         
         if not self.files.get(key):

@@ -937,15 +937,15 @@ def start_stop_generators_menu(config_path, active_generators):
     # Small pause to let the user see the configuration
     click.pause()
     
-    # Keep track of running state
-    # Initialize engine but don't start yet
+    # Set up initial state - engine is stopped and no generators are active yet
     engine_running = False
     
-    # Keep track of which generators are active
-    active_status = {name: False for name in active_generators}
+    # Mark all generators in config file as active, but they're not running yet
+    # When the engine starts, it will automatically start all active generators
     for name in active_generators:
         if name in engine.generators:
-            engine.generators[name].active = False
+            # Set the generator to active in the engine
+            engine.generators[name].active = True
     
     while True:
         click.clear()
@@ -964,13 +964,10 @@ def start_stop_generators_menu(config_path, active_generators):
             # Check if this generator exists
             generator_exists = generator_name in engine.generators
             
-            # Show status based on active flag
-            is_active = active_status.get(generator_name, False)
-            
             # Format status indicators
             if not generator_exists:
                 status = click.style("[Not Found]", fg='red')
-            elif is_active and engine_running:
+            elif engine_running and generator_name in engine.generators and engine.generators[generator_name].active:
                 status = click.style("[Running]", fg='green')
             else:
                 status = click.style("[Stopped]", fg='yellow')
@@ -979,12 +976,12 @@ def start_stop_generators_menu(config_path, active_generators):
             
         click.echo("")
         click.echo(click.style("Options:", fg='yellow'))
-        click.echo("1. Start generator")
-        click.echo("2. Stop generator")
-        click.echo("3. Restart generator")
-        click.echo("4. Start all generators")
-        click.echo("5. Stop all generators")
-        click.echo("6. Start/stop engine")
+        click.echo("1. Start/stop engine")
+        click.echo("2. Start generator")
+        click.echo("3. Stop generator")
+        click.echo("4. Restart generator")
+        click.echo("5. Start all generators")
+        click.echo("6. Stop all generators")
         click.echo("0. Back")
         
         choice = click.prompt("Select an option", type=int, default=0)
@@ -1002,6 +999,30 @@ def start_stop_generators_menu(config_path, active_generators):
             return
             
         elif choice == 1:
+            # Start/stop the engine
+            if engine_running:
+                # Stop the engine
+                try:
+                    engine.stop()
+                    engine_running = False
+                    click.echo("Engine stopped. All generators are now stopped.")
+                    click.pause()
+                except Exception as e:
+                    click.echo(f"Error stopping engine: {e}")
+                    click.pause()
+            else:
+                # Start the engine
+                try:
+                    # Start the engine - this will start all active generators
+                    engine.start()
+                    engine_running = True
+                    click.echo("Engine started. All active generators are now running.")
+                    click.pause()
+                except Exception as e:
+                    click.echo(f"Error starting engine: {e}")
+                    click.pause()
+                
+        elif choice == 2:
             # Start a generator
             generator_idx = select_generator_to_control(active_generators, "start")
             if generator_idx >= 0:
@@ -1014,21 +1035,21 @@ def start_stop_generators_menu(config_path, active_generators):
                 try:
                     # Set generator to active
                     engine.generators[generator_name].active = True
-                    active_status[generator_name] = True
                     
                     # Start the generator if engine is running
                     if engine_running:
                         engine.start_generator(generator_name)
-                        click.echo(f"Generator '{generator_name}' started.")
+                        click.echo(f"Generator '{generator_name}' started and is now running.")
                     else:
-                        click.echo(f"Generator '{generator_name}' marked as active. Start the engine to begin generating logs.")
+                        click.echo(f"Generator '{generator_name}' is now active but the engine is stopped. " +
+                                  "Start the engine to begin generating logs.")
                     
                     click.pause()
                 except Exception as e:
                     click.echo(f"Error starting generator: {e}")
                     click.pause()
                     
-        elif choice == 2:
+        elif choice == 3:
             # Stop a generator
             generator_idx = select_generator_to_control(active_generators, "stop")
             if generator_idx >= 0:
@@ -1038,23 +1059,19 @@ def start_stop_generators_menu(config_path, active_generators):
                     click.pause()
                     continue
                     
-                if not active_status.get(generator_name, False):
-                    click.echo(f"Generator '{generator_name}' is not active.")
-                    click.pause()
-                    continue
-                    
                 try:
                     # Stop the generator
-                    engine.stop_generator(generator_name)
+                    if engine_running:
+                        engine.stop_generator(generator_name)
+                    
                     engine.generators[generator_name].active = False
-                    active_status[generator_name] = False
-                    click.echo(f"Generator '{generator_name}' stopped.")
+                    click.echo(f"Generator '{generator_name}' stopped and is now inactive.")
                     click.pause()
                 except Exception as e:
                     click.echo(f"Error stopping generator: {e}")
                     click.pause()
                     
-        elif choice == 3:
+        elif choice == 4:
             # Restart a generator
             generator_idx = select_generator_to_control(active_generators, "restart")
             if generator_idx >= 0:
@@ -1065,33 +1082,35 @@ def start_stop_generators_menu(config_path, active_generators):
                     continue
                     
                 try:
-                    # Stop the generator if it's active
-                    if active_status.get(generator_name, False) and engine_running:
+                    # Stop the generator if the engine is running
+                    if engine_running:
+                        # Stop first
                         engine.stop_generator(generator_name)
                         
-                    # Set as active and start if engine is running
-                    engine.generators[generator_name].active = True
-                    active_status[generator_name] = True
-                    
-                    if engine_running:
-                        engine.start_generator(generator_name)
-                        click.echo(f"Generator '{generator_name}' restarted.")
-                    else:
-                        click.echo(f"Generator '{generator_name}' marked as active. Start the engine to begin generating logs.")
+                        # Set as active
+                        engine.generators[generator_name].active = True
                         
+                        # Start again
+                        engine.start_generator(generator_name)
+                        click.echo(f"Generator '{generator_name}' has been restarted and is now running.")
+                    else:
+                        # Just set as active, engine isn't running
+                        engine.generators[generator_name].active = True
+                        click.echo(f"Generator '{generator_name}' is now active but the engine is stopped. " +
+                                  "Start the engine to begin generating logs.")
+                    
                     click.pause()
                 except Exception as e:
                     click.echo(f"Error restarting generator: {e}")
                     click.pause()
                     
-        elif choice == 4:
+        elif choice == 5:
             # Start all generators
             try:
                 # Mark all generators as active
                 for generator_name in active_generators:
                     if generator_name in engine.generators:
                         engine.generators[generator_name].active = True
-                        active_status[generator_name] = True
                 
                 # Start them if engine is running
                 if engine_running:
@@ -1102,53 +1121,29 @@ def start_stop_generators_menu(config_path, active_generators):
                             except Exception as e:
                                 click.echo(f"Error starting generator '{generator_name}': {e}")
                     
-                    click.echo("All generators started.")
+                    click.echo("All generators started and are now running.")
                 else:
-                    click.echo("All generators marked as active. Start the engine to begin generating logs.")
+                    click.echo("All generators are now active. Start the engine to begin generating logs.")
                 
                 click.pause()
             except Exception as e:
                 click.echo(f"Error starting generators: {e}")
                 click.pause()
                 
-        elif choice == 5:
+        elif choice == 6:
             # Stop all generators
             try:
                 for generator_name in active_generators:
-                    if generator_name in engine.generators and active_status.get(generator_name, False):
-                        engine.stop_generator(generator_name)
+                    if generator_name in engine.generators:
+                        if engine_running:
+                            engine.stop_generator(generator_name)
                         engine.generators[generator_name].active = False
-                        active_status[generator_name] = False
                 
-                click.echo("All generators stopped.")
+                click.echo("All generators stopped and are now inactive.")
                 click.pause()
             except Exception as e:
                 click.echo(f"Error stopping generators: {e}")
                 click.pause()
-                
-        elif choice == 6:
-            # Start/stop the engine
-            if engine_running:
-                # Stop the engine
-                try:
-                    engine.stop()
-                    engine_running = False
-                    click.echo("Engine stopped.")
-                    click.pause()
-                except Exception as e:
-                    click.echo(f"Error stopping engine: {e}")
-                    click.pause()
-            else:
-                # Start the engine
-                try:
-                    # Start the engine - this will start the active generators
-                    engine.start()
-                    engine_running = True
-                    click.echo("Engine started.")
-                    click.pause()
-                except Exception as e:
-                    click.echo(f"Error starting engine: {e}")
-                    click.pause()
                 
         else:
             click.echo("Invalid option.")
