@@ -40,9 +40,10 @@ def configure_logging(verbose: bool):
     file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(file_formatter)
     
-    # Create console handler for important logs only (warning and above)
+    # Create console handler for important logs only (critical and above in normal mode)
+    # This prevents warnings and errors from being displayed during menu operation
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.WARNING)
+    console_handler.setLevel(logging.CRITICAL if not verbose else logging.WARNING)
     console_formatter = logging.Formatter('%(levelname)s: %(message)s')
     console_handler.setFormatter(console_formatter)
     

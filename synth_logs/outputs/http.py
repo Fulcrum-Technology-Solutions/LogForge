@@ -50,9 +50,9 @@ class HttpAdapter(OutputAdapter):
         if 'Content-Type' not in self.headers:
             self.headers['Content-Type'] = 'application/json'
             
-        # Log the configuration
-        logger.warning(f"Initializing HTTP adapter {name} for URL: {url}")
-        logger.warning(f"HTTP Method: {method}, Timeout: {timeout}s, Retry Count: {retry_count}")
+        # Log the configuration (at info level to prevent console output)
+        logger.info(f"Initializing HTTP adapter {name} for URL: {url}")
+        logger.info(f"HTTP Method: {method}, Timeout: {timeout}s, Retry Count: {retry_count}")
         
         # Log headers with sensitive info masked
         header_str = ', '.join([
@@ -60,11 +60,11 @@ class HttpAdapter(OutputAdapter):
             else f'{k}: {v}' 
             for k, v in self.headers.items()
         ])
-        logger.warning(f"HTTP Headers: {header_str}")
+        logger.info(f"HTTP Headers: {header_str}")
         
         # Validate URL format
         if not url.startswith(('http://', 'https://')):
-            logger.error(f"Invalid URL format: {url} - URL must start with http:// or https://")
+            logger.info(f"Invalid URL format: {url} - URL must start with http:// or https://")
         
         # Test connection on startup if not localhost
         if not (url.startswith('http://localhost') or url.startswith('http://127.0.0.1')):
@@ -75,9 +75,9 @@ class HttpAdapter(OutputAdapter):
                     verify=verify_ssl,
                     allow_redirects=True
                 )
-                logger.warning(f"Initial connection test to {url}: HTTP {test_response.status_code}")
+                logger.info(f"Initial connection test to {url}: HTTP {test_response.status_code}")
             except requests.exceptions.RequestException as e:
-                logger.error(f"Initial connection test to {url} failed: {e}")
+                logger.info(f"Initial connection test to {url} failed: {e}")
                 self.last_error = str(e)
             
         # Initialize session for connection pooling
@@ -132,7 +132,7 @@ class HttpAdapter(OutputAdapter):
                 
                 # Only log every 100 successful requests to avoid log flooding
                 if self.sent_count % 100 == 1:  # Log 1st, 101st, 201st, etc.
-                    logger.warning(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
+                    logger.info(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
                 else:
                     logger.debug(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
                     
@@ -142,39 +142,39 @@ class HttpAdapter(OutputAdapter):
                 # Connection errors: network problems, DNS failure, refused connection
                 error_msg = f"Connection error to {self.url}: {e}"
                 if attempt < self.retry_count:
-                    logger.warning(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
                     time.sleep(self.retry_delay)
                 else:
                     self.failed_count += 1
                     self.last_error = error_msg
-                    logger.error(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
                     return False
             except requests.exceptions.Timeout as e:
                 # Timeout errors
                 error_msg = f"Timeout connecting to {self.url} (timeout={self.timeout}s): {e}"
                 if attempt < self.retry_count:
-                    logger.warning(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
                     time.sleep(self.retry_delay)
                 else:
                     self.failed_count += 1
                     self.last_error = error_msg
-                    logger.error(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
                     return False
             except requests.exceptions.HTTPError as e:
                 # HTTP errors (4xx, 5xx responses)
                 status_code = e.response.status_code if hasattr(e, 'response') and e.response else 'unknown'
                 error_msg = f"HTTP error {status_code} from {self.url}: {e}"
                 if attempt < self.retry_count:
-                    logger.warning(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
                     time.sleep(self.retry_delay)
                 else:
                     self.failed_count += 1
                     self.last_error = error_msg
-                    logger.error(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
                     # Log response content if available for debugging
                     if hasattr(e, 'response') and e.response:
                         try:
-                            logger.error(f"Response content: {e.response.text[:500]}")
+                            logger.info(f"Response content: {e.response.text[:500]}")
                         except:
                             pass
                     return False
@@ -182,12 +182,12 @@ class HttpAdapter(OutputAdapter):
                 # Catch-all for any other request-related errors
                 error_msg = f"Error sending log to {self.url}: {e}"
                 if attempt < self.retry_count:
-                    logger.warning(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
                     time.sleep(self.retry_delay)
                 else:
                     self.failed_count += 1
                     self.last_error = error_msg
-                    logger.error(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
                     return False
                     
     def send_with_extension(self, log_entry: str, file_extension: str = None) -> bool:

@@ -319,7 +319,7 @@ class Engine:
             
         for output in self.outputs:
             try:
-                # Log which output we're sending to
+                # Log which output we're sending to (debug level only)
                 logger.debug(f"Sending log entry to output: {output.name} (type: {output.__class__.__name__})")
                 
                 # Pass the file extension to the output if it supports it
@@ -331,13 +331,13 @@ class Engine:
                     logger.debug(f"Output {output.name} using standard send method")
                     result = output.send(log_entry)
                     
-                # Log the result
+                # Log the result (info level to avoid console during menu operation)
                 if result:
                     logger.debug(f"Successfully sent log to output: {output.name}")
                 else:
-                    logger.warning(f"Failed to send log to output: {output.name}")
+                    logger.info(f"Failed to send log to output: {output.name}")
             except Exception as e:
-                logger.error(f"Error sending to output {output.name}: {e}")
+                logger.info(f"Error sending to output {output.name}: {e}")
                 
     def discover_generators(self):
         """Discover and load all available generators via entry points."""
