@@ -329,7 +329,7 @@ class Engine:
                 frequency = generator.get_frequency()
                 if frequency > 0:
                     log_entry = generator.generate(self.registry)
-                    self._send_to_outputs(log_entry)
+                    self._send_to_outputs(log_entry, generator)
                     
                 # Sleep for the time calculated from the frequency
                 sleep_time = 1.0 / frequency if frequency > 0 else 1.0
@@ -339,15 +339,25 @@ class Engine:
                 logger.error(f"Error in generator {generator.name}: {e}")
                 time.sleep(1.0)  # Avoid tight loop in case of persistent errors
                 
-    def _send_to_outputs(self, log_entry: str):
+    def _send_to_outputs(self, log_entry: str, generator=None):
         """Send a log entry to all outputs.
         
         Args:
             log_entry: The log entry to send
+            generator: The generator that produced this entry (for file extension info)
         """
+        # Get the file extension from the generator's template path if available
+        file_extension = None
+        if generator and hasattr(generator, 'template_path'):
+            _, file_extension = os.path.splitext(generator.template_path)
+            
         for output in self.outputs:
             try:
-                output.send(log_entry)
+                # Pass the file extension to the output if it supports it
+                if hasattr(output, 'send_with_extension'):
+                    output.send_with_extension(log_entry, file_extension)
+                else:
+                    output.send(log_entry)
             except Exception as e:
                 logger.error(f"Error sending to output {output.name}: {e}")
                 

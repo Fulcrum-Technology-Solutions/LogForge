@@ -48,11 +48,12 @@ class FileAdapter(OutputAdapter):
         if self.hourly_rotation:
             self.current_hour = datetime.now().hour
         
-    def _get_file_path(self, data_source: str = None) -> str:
+    def _get_file_path(self, data_source: str = None, file_extension: str = None) -> str:
         """Get the file path for the given data source and current time.
         
         Args:
             data_source: The data source name
+            file_extension: The file extension to use (e.g., '.xml', '.json')
             
         Returns:
             The file path
@@ -65,21 +66,34 @@ class FileAdapter(OutputAdapter):
         
         logger.debug(f"Getting file path for data source: {effective_data_source}")
         
+        # Determine the file extension to use
+        if file_extension:
+            # Use the provided extension
+            # Strip any extension from the base_name
+            base_name_without_ext = os.path.splitext(base_name)[0]
+            output_filename = f"{base_name_without_ext}{file_extension}"
+        else:
+            # Use the extension from the configured file path
+            output_filename = base_name
+            
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
             timestamp = datetime.now().strftime("%Y%m%d_%H")
-            return os.path.join(base_dir, f"{effective_data_source}_{timestamp}_{base_name}")
+            return os.path.join(base_dir, f"{effective_data_source}_{timestamp}_{output_filename}")
         else:
-            return os.path.join(base_dir, f"{effective_data_source}_{base_name}")
+            return os.path.join(base_dir, f"{effective_data_source}_{output_filename}")
     
-    def _open_file(self, data_source: str = None):
+    def _open_file(self, data_source: str = None, file_extension: str = None):
         """Open the file for writing.
         
         Args:
             data_source: The data source name
+            file_extension: The file extension to use
         """
-        file_path = self._get_file_path(data_source)
+        file_path = self._get_file_path(data_source, file_extension)
         key = data_source or '_default'
+        if file_extension:
+            key = f"{key}_{file_extension}"
         
         try:
             self.files[key] = open(file_path, self.mode, encoding='utf-8')
@@ -95,14 +109,18 @@ class FileAdapter(OutputAdapter):
             logger.error(f"Error opening file {file_path}: {e}")
             self.files[key] = None
             
-    def _rotate_file(self, data_source: str = None):
+    def _rotate_file(self, data_source: str = None, file_extension: str = None):
         """Rotate the log file if it exceeds the maximum size.
         
         Args:
             data_source: The data source name
+            file_extension: The file extension to use
         """
         key = data_source or '_default'
-        file_path = self._get_file_path(data_source)
+        if file_extension:
+            key = f"{key}_{file_extension}"
+            
+        file_path = self._get_file_path(data_source, file_extension)
         
         # Close the current file
         if key in self.files and self.files[key]:
@@ -131,14 +149,15 @@ class FileAdapter(OutputAdapter):
                 os.rename(file_path, dst)
             
         # Open a new file
-        self._open_file(data_source)
+        self._open_file(data_source, file_extension)
         self.current_sizes[key] = 0
     
-    def _check_hour_rotation(self, data_source: str = None):
+    def _check_hour_rotation(self, data_source: str = None, file_extension: str = None):
         """Check if hourly rotation is needed and perform it if necessary.
         
         Args:
             data_source: The data source name
+            file_extension: The file extension to use
         """
         if not self.hourly_rotation:
             return
@@ -146,8 +165,69 @@ class FileAdapter(OutputAdapter):
         current_hour = datetime.now().hour
         if current_hour != self.current_hour:
             self.current_hour = current_hour
-            self._rotate_file(data_source)
+            self._rotate_file(data_source, file_extension)
         
+    def send_with_extension(self, log_entry: str, file_extension: str = None) -> bool:
+        """Send a log entry to the file with specific file extension.
+        
+        Args:
+            log_entry: The log entry to send
+            file_extension: The file extension to use for the output file
+            
+        Returns:
+            True if the log entry was successfully sent, False otherwise
+        """
+        logger.debug(f"Sending log entry to file with extension {file_extension}, length: {len(log_entry)}")
+        
+        # Extract data source if configured
+        data_source = self._extract_data_source(log_entry)
+        logger.debug(f"Extracted data source: {data_source}")
+        
+        key = data_source or '_default'
+        
+        # If using a specific extension, add it to the key
+        if file_extension:
+            key = f"{key}_{file_extension}"
+        
+        # Check for hourly rotation
+        self._check_hour_rotation(data_source, file_extension)
+        
+        # Get the file path for debugging purposes
+        file_path = self._get_file_path(data_source, file_extension)
+        logger.debug(f"Using file path: {file_path}")
+        
+        # Open file if not already open
+        if key not in self.files or not self.files[key]:
+            logger.info(f"Opening file: {file_path}")
+            self._open_file(data_source, file_extension)
+        
+        if not self.files.get(key):
+            logger.error(f"File not open for data source {data_source}")
+            return False
+                
+        try:
+            # Add a newline if needed
+            if not log_entry.endswith('\n'):
+                log_entry += '\n'
+                
+            # Write to the file
+            self.files[key].write(log_entry)
+            self.files[key].flush()
+            
+            # Update current size for rotation
+            if self.max_size is not None:
+                self.current_sizes[key] = self.current_sizes.get(key, 0) + len(log_entry.encode('utf-8'))
+                
+                # Rotate if necessary
+                if self.current_sizes[key] > self.max_size:
+                    self._rotate_file(data_source, file_extension)
+                    
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error writing to file for data source {data_source}: {e}")
+            return False
+    
     def _extract_data_source(self, log_entry: str) -> Optional[str]:
         """Extract the data source from the log entry.
         
@@ -212,31 +292,33 @@ class FileAdapter(OutputAdapter):
                 generator_name = generator_name.replace(char, '_')
             return generator_name
             
-        # If regex fails, try JSON parsing as a backup
-        try:
-            import json
-            
-            # Try to fix common JSON issues by removing control characters
-            fixed_entry = ''.join(ch for ch in log_entry if ord(ch) >= 32 or ch == '\n')
-            
-            data = json.loads(fixed_entry)
-            
-            logger.debug(f"Log entry parsed as JSON with keys: {list(data.keys())}")
-            
-            if self.data_source_field in data:
-                # Clean up generator name for use in filenames
-                generator_name = str(data[self.data_source_field])
-                logger.debug(f"Found generator name via JSON: {generator_name}")
+        # If regex fails, try JSON parsing as a backup (but only for JSON-looking content)
+        if log_entry.strip().startswith('{') and log_entry.strip().endswith('}'):
+            try:
+                import json
                 
-                # Replace special characters that shouldn't be in filenames
-                for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
-                    generator_name = generator_name.replace(char, '_')
-                return generator_name
-            else:
-                logger.debug(f"Field '{self.data_source_field}' not found in JSON data")
-        except (json.JSONDecodeError, AttributeError, TypeError) as e:
-            # Log the error for debugging
-            logger.warning(f"Could not extract data source from log entry using JSON: {e}")
+                # Try to fix common JSON issues by removing control characters
+                fixed_entry = ''.join(ch for ch in log_entry if ord(ch) >= 32 or ch == '\n')
+                
+                data = json.loads(fixed_entry)
+                
+                logger.debug(f"Log entry parsed as JSON with keys: {list(data.keys())}")
+                
+                if self.data_source_field in data:
+                    # Clean up generator name for use in filenames
+                    generator_name = str(data[self.data_source_field])
+                    logger.debug(f"Found generator name via JSON: {generator_name}")
+                    
+                    # Replace special characters that shouldn't be in filenames
+                    for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
+                        generator_name = generator_name.replace(char, '_')
+                    return generator_name
+                else:
+                    logger.debug(f"Field '{self.data_source_field}' not found in JSON data")
+            except (json.JSONDecodeError, AttributeError, TypeError) as e:
+                # Log the error for debugging
+                logger.debug(f"Could not extract data source from JSON-looking log entry: {e}")
+        # Skip JSON parsing for non-JSON content
             
         # If we still don't have a data source, try to infer it from the log content
         # For example, look for specific patterns that might indicate the source
@@ -319,52 +401,8 @@ class FileAdapter(OutputAdapter):
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        logger.debug(f"Sending log entry to file, length: {len(log_entry)}")
-        
-        # Extract data source if configured
-        data_source = self._extract_data_source(log_entry)
-        logger.debug(f"Extracted data source: {data_source}")
-        
-        key = data_source or '_default'
-        
-        # Check for hourly rotation
-        self._check_hour_rotation(data_source)
-        
-        # Get the file path for debugging purposes
-        file_path = self._get_file_path(data_source)
-        logger.debug(f"Using file path: {file_path}")
-        
-        # Open file if not already open
-        if key not in self.files or not self.files[key]:
-            logger.info(f"Opening file: {file_path}")
-            self._open_file(data_source)
-        
-        if not self.files.get(key):
-            logger.error(f"File not open for data source {data_source}")
-            return False
-                
-        try:
-            # Add a newline if needed
-            if not log_entry.endswith('\n'):
-                log_entry += '\n'
-                
-            # Write to the file
-            self.files[key].write(log_entry)
-            self.files[key].flush()
-            
-            # Update current size for rotation
-            if self.max_size is not None:
-                self.current_sizes[key] = self.current_sizes.get(key, 0) + len(log_entry.encode('utf-8'))
-                
-                # Rotate if necessary
-                if self.current_sizes[key] > self.max_size:
-                    self._rotate_file(data_source)
-                    
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error writing to file for data source {data_source}: {e}")
-            return False
+        # Default to send without a specific file extension
+        return self.send_with_extension(log_entry, None)
             
     def close(self):
         """Close all open files."""
