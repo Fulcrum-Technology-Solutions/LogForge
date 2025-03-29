@@ -60,6 +60,10 @@ class TemplateManager:
         env.filters['to_datetime'] = self.to_datetime
         env.filters['format_datetime'] = self.format_datetime
         
+        # Add string formatting filters
+        env.filters['format'] = lambda value, fmt: format(value, fmt)
+        env.filters['hex'] = lambda value: format(value, 'x')
+        
         # Register global functions (available directly in templates)
         env.globals['random_int'] = self.random_int
         env.globals['random_number'] = self.random_int  # Alias for random_int

@@ -5,11 +5,7 @@ entity_registry: "entities.sample.yaml"
 
 # Output configuration
 outputs:
-  # Standard output to console
-  - type: stdout
-    name: console
-  
-  # File output with rotation
+  # File output with rotation (default)
   - type: file
     name: file_output
     file_path: "logs/synth_logs.json"
@@ -20,6 +16,10 @@ outputs:
     # Field in JSON log entry to identify the data source
     # Each data source will get a separate log file
     data_source_field: "generator"
+  
+  # Standard output to console (uncomment to enable)
+  # - type: stdout
+  #   name: console
   
   # HTTP output (uncomment to enable)
   # - type: http

@@ -5,13 +5,18 @@ entity_registry: "entities.yaml"
 
 # Output configuration
 outputs:
-  - type: stdout
-    name: console
   - type: file
     name: file_output
     file_path: "logs/synth_logs.json"
     max_size: 10485760  # 10MB
     backup_count: 5
+    # Enable hourly rotation with timestamp in filename
+    hourly_rotation: true
+    # Field in log entry to identify the data source
+    data_source_field: "generator"
+  # Console output is commented out by default
+  # - type: stdout
+  #   name: console
 
 # Time patterns
 time_patterns:

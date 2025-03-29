@@ -166,8 +166,15 @@ class FileAdapter(OutputAdapter):
             import json
             data = json.loads(log_entry)
             if self.data_source_field in data:
-                return str(data[self.data_source_field]).replace('/', '_').replace('\\', '_')
+                # Clean up generator name for use in filenames
+                generator_name = str(data[self.data_source_field])
+                # Replace special characters that shouldn't be in filenames
+                for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' ']:
+                    generator_name = generator_name.replace(char, '_')
+                return generator_name
         except (json.JSONDecodeError, AttributeError, TypeError):
+            # Log the error for debugging
+            logger.debug(f"Could not extract data source from log entry: {log_entry[:100]}...")
             pass
             
         return None
