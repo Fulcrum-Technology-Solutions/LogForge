@@ -8,6 +8,12 @@ users:
     department: "IT"
     title: "System Administrator"
     is_admin: true
+    employee_type: "employee"
+    location:
+      city: "Seattle"
+      state: "Washington"
+      country: "USA"
+    organization: "Technology Services"
   - username: "alee"
     full_name: "Alice Lee"
     email: "alee@example.com"
@@ -15,6 +21,12 @@ users:
     department: "Finance"
     title: "Accountant"
     is_admin: false
+    employee_type: "employee"
+    location:
+      city: "Chicago"
+      state: "Illinois"
+      country: "USA"
+    organization: "Financial Operations"
   - username: "bjohnson"
     full_name: "Bob Johnson"
     email: "bjohnson@example.com"
@@ -22,6 +34,11 @@ users:
     department: "Sales"
     title: "Sales Manager"
     is_admin: false
+    employee_type: "employee"
+    location:
+      city: "London"
+      country: "UK"
+    organization: "Sales Division"
   - username: "mwilliams"
     full_name: "Mary Williams"
     email: "mwilliams@example.com"
@@ -29,6 +46,12 @@ users:
     department: "HR"
     title: "HR Director"
     is_admin: true
+    employee_type: "employee"
+    location:
+      city: "Austin"
+      state: "Texas"
+      country: "USA"
+    organization: "Human Resources"
   - username: "dthomas"
     full_name: "David Thomas"
     email: "dthomas@example.com"
@@ -36,6 +59,11 @@ users:
     department: "Engineering"
     title: "Software Engineer"
     is_admin: false
+    employee_type: "contingent"
+    location:
+      city: "Singapore"
+      country: "Singapore"
+    organization: "Engineering Division"
 
 devices:
   - hostname: "WS001"

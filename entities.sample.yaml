@@ -9,6 +9,12 @@ users:
     department: "IT"
     title: "System Administrator"
     is_admin: true
+    employee_type: "employee"
+    location:
+      city: "Seattle"
+      state: "Washington"
+      country: "USA"
+    organization: "Technology Services"
   
   - username: "mwilson"
     full_name: "Margaret Wilson"
@@ -17,6 +23,12 @@ users:
     department: "IT"
     title: "Network Engineer"
     is_admin: true
+    employee_type: "employee"
+    location:
+      city: "Portland"
+      state: "Oregon"
+      country: "USA"
+    organization: "Technology Services"
   
   # Finance Department Users
   - username: "rjones"
@@ -26,6 +38,12 @@ users:
     department: "Finance"
     title: "Accountant"
     is_admin: false
+    employee_type: "employee"
+    location:
+      city: "New York"
+      state: "New York"
+      country: "USA"
+    organization: "Financial Operations"
     
   - username: "alee"
     full_name: "Alice Lee"
@@ -34,6 +52,12 @@ users:
     department: "Finance"
     title: "Financial Analyst"
     is_admin: false
+    employee_type: "contingent"
+    location:
+      city: "Chicago"
+      state: "Illinois"
+      country: "USA"
+    organization: "Financial Operations"
     
   # Sales Department Users
   - username: "bjohnson"
@@ -43,6 +67,11 @@ users:
     department: "Sales"
     title: "Sales Manager"
     is_admin: false
+    employee_type: "employee"
+    location:
+      city: "London"
+      country: "UK"
+    organization: "Sales Division"
 
 devices:
   # Workstations
