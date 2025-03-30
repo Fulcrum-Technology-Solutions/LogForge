@@ -32,20 +32,57 @@ pip install -e .
 
 ## Configuration
 
-Logforge uses YAML configuration files to define outputs, time patterns, and active generators. See the `config.sample.yaml` file for an example.
+Logforge uses YAML configuration files to define outputs, time patterns, and active generators. The initial configuration is minimal, and you can use the CLI menu to configure outputs and generators interactively.
 
 ```yaml
 # Basic configuration
+# The initial config has no outputs configured
+# Logforge will prompt you to choose between file or HTTP output when first run
+outputs: []
+
+# Time patterns control frequency of logs throughout the day/week
+time_patterns:
+  - name: business_hours
+    base_frequency: 1.0
+    start_time: "09:00"
+    end_time: "17:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 2.0
+  - name: night_hours
+    base_frequency: 0.3
+    start_time: "17:00"
+    end_time: "09:00"
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
+    multiplier: 0.3
+  - name: weekend
+    base_frequency: 0.2
+    start_time: "00:00"
+    end_time: "23:59"
+    days_of_week: ["SATURDAY", "SUNDAY"]
+    multiplier: 0.5
+
+# No generators activated by default
+# Use the CLI menu to add generators
+active_generators: []
+```
+
+### Available Output Types
+
+You can configure the following output types:
+
+#### File Output
+```yaml
 outputs:
-  - type: stdout
-    name: console
   - type: file
     name: file_output
     file_path: "logs/synth_logs.json"
-    # Enable hourly rotation with timestamp in filename
     hourly_rotation: true
-    # Field in log entry to identify the data source
     data_source_field: "generator"
+```
+
+#### HTTP Output
+```yaml
+outputs:
   - type: http
     name: api_output
     url: "https://api.example.com/logs"
@@ -55,12 +92,13 @@ outputs:
       Authorization: "Bearer YOUR_API_TOKEN_HERE"
     retry_count: 3
     retry_delay: 1.0
+```
 
-# Active generators
-active_generators:
-  - microsoft_windows_security_login_success
-  - microsoft_windows_system_service_start
-  - paloalto_traffic_session
+#### Console Output
+```yaml
+outputs:
+  - type: stdout
+    name: console
 ```
 
 ## Usage
@@ -72,11 +110,14 @@ synth-logs run --config config.yaml
 # List available generators
 synth-logs list-generators --config config.yaml
 
-# Create a systemd service
+# Interactive configuration menu (recommended for first-time setup)
+synth-logs configure --config config.yaml
+
+# Create a systemd service (after configuring)
 synth-logs create-service --config /absolute/path/to/config.yaml --user logforge
 
-# Interactive configuration menu
-synth-logs configure --config config.yaml
+# Run with verbose output (shows errors on console)
+synth-logs -v run --config config.yaml
 ```
 
 ### Log File Output
