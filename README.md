@@ -141,6 +141,17 @@ logs/
 
 ### HTTP Output with Authentication
 
+The HTTP output adapter wraps all log events in a JSON object with the raw content in an `event` field, and when available, the format is included as well:
+
+```json
+{
+  "event": "<actual log content as text>",
+  "format": "xml"
+}
+```
+
+This ensures that regardless of the original log format (XML, JSON, etc.), the HTTP endpoint receives a well-formed JSON object with the raw event content preserved.
+
 Logforge supports several authentication methods for the HTTP output adapter:
 
 1. **Bearer Token Authentication**:

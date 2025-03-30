@@ -92,18 +92,9 @@ class HttpAdapter(OutputAdapter):
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        # Determine if log_entry is JSON or plain text
-        data = log_entry
-        try:
-            # If it's valid JSON, parse it so requests sends it as JSON
-            if self.headers.get('Content-Type') == 'application/json':
-                data = json.loads(log_entry)
-        except json.JSONDecodeError:
-            # Not valid JSON, send as plain text
-            if self.headers.get('Content-Type') == 'application/json':
-                # Wrap in a simple JSON envelope
-                data = {'message': log_entry}
-                
+        # Always wrap the raw event text in a JSON field called "event"
+        data = {'event': log_entry}
+        
         # Try to send the request with retries
         for attempt in range(self.retry_count + 1):
             try:
@@ -117,8 +108,7 @@ class HttpAdapter(OutputAdapter):
                 response = self.session.request(
                     method=self.method,
                     url=self.url,
-                    json=data if isinstance(data, dict) else None,
-                    data=log_entry if not isinstance(data, dict) else None,
+                    json=data,
                     headers=self.headers,
                     timeout=self.timeout,
                     verify=self.verify_ssl
@@ -195,14 +185,101 @@ class HttpAdapter(OutputAdapter):
         
         Args:
             log_entry: The log entry to send
-            file_extension: The extension of the source file (not used for HTTP)
+            file_extension: The extension of the source file
             
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        # HTTP adapter doesn't care about the file extension,
-        # so just forward to the regular send method
-        return self.send(log_entry)
+        # Create JSON object with event content and include file extension info
+        data = {
+            'event': log_entry,
+            'format': file_extension.lstrip('.') if file_extension else None
+        }
+        
+        # Try to send the request with retries
+        for attempt in range(self.retry_count + 1):
+            try:
+                # Log sending attempt (debug level to avoid excessive logging)
+                logger.debug(f"Sending log to {self.url} (attempt {attempt+1}/{self.retry_count+1})")
+                
+                # Extract a small part of the log for debugging
+                log_preview = log_entry[:100] + '...' if len(log_entry) > 100 else log_entry
+                logger.debug(f"Log content preview: {log_preview}")
+                
+                response = self.session.request(
+                    method=self.method,
+                    url=self.url,
+                    json=data,
+                    headers=self.headers,
+                    timeout=self.timeout,
+                    verify=self.verify_ssl
+                )
+                
+                response.raise_for_status()  # Raise an exception for HTTP errors
+                
+                # Log successful send
+                self.sent_count += 1
+                self.last_success_time = time.time()
+                
+                # Only log every 100 successful requests to avoid log flooding
+                if self.sent_count % 100 == 1:  # Log 1st, 101st, 201st, etc.
+                    logger.info(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
+                else:
+                    logger.debug(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
+                    
+                return True
+                
+            except requests.exceptions.ConnectionError as e:
+                # Connection errors: network problems, DNS failure, refused connection
+                error_msg = f"Connection error to {self.url}: {e}"
+                if attempt < self.retry_count:
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.failed_count += 1
+                    self.last_error = error_msg
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    return False
+            except requests.exceptions.Timeout as e:
+                # Timeout errors
+                error_msg = f"Timeout connecting to {self.url} (timeout={self.timeout}s): {e}"
+                if attempt < self.retry_count:
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.failed_count += 1
+                    self.last_error = error_msg
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    return False
+            except requests.exceptions.HTTPError as e:
+                # HTTP errors (4xx, 5xx responses)
+                status_code = e.response.status_code if hasattr(e, 'response') and e.response else 'unknown'
+                error_msg = f"HTTP error {status_code} from {self.url}: {e}"
+                if attempt < self.retry_count:
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.failed_count += 1
+                    self.last_error = error_msg
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    # Log response content if available for debugging
+                    if hasattr(e, 'response') and e.response:
+                        try:
+                            logger.info(f"Response content: {e.response.text[:500]}")
+                        except:
+                            pass
+                    return False
+            except requests.exceptions.RequestException as e:
+                # Catch-all for any other request-related errors
+                error_msg = f"Error sending log to {self.url}: {e}"
+                if attempt < self.retry_count:
+                    logger.info(f"{error_msg}, retrying in {self.retry_delay}s (attempt {attempt+1}/{self.retry_count})")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.failed_count += 1
+                    self.last_error = error_msg
+                    logger.info(f"{error_msg} - Failed after {self.retry_count} retries (total failures: {self.failed_count})")
+                    return False
         
     def get_status(self) -> str:
         """Get the status of the HTTP adapter.
