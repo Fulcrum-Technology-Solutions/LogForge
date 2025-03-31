@@ -1,0 +1,66 @@
+{
+    "metadata": {
+      "customerIDString": "{{ registry.get_random_user().id or random_guid() }}",
+      "offset": {{ random_int(5000000, 6000000) }},
+      "eventType": "AuthActivityAuditEvent",
+      "eventCreationTime": {{ current_timestamp() * 1000 | int }},
+      "version": "1.0"
+    },
+    "event": {
+      "UserId": "",
+      "UserIp": "{{ random_public_ip() }}",
+      "OperationName": "logged",
+      "ServiceName": "api_request",
+      "Success": true,
+      "UTCTimestamp": {{ current_timestamp() | int }},
+      "AuditKeyValues": [
+        {"Key": "request_method", "ValueString": "GET"},
+        {"Key": "request_path", "ValueString": "/intel/combined/indicators/v1"},
+        {"Key": "user_ip", "ValueString": "{{ random_public_ip() }}"},
+        {"Key": "received_time", "ValueString": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}"},
+        {"Key": "cid", "ValueString": "{{ registry.get_random_user().id or random_guid() }}"},
+        {"Key": "APIClientID", "ValueString": "{{ random_guid() }}"},
+        {"Key": "request_query", "ValueString": "filter=type%3A%27hash_sha256%27%2Bindicator%3A%27{{ random_string(64, 'abcdef0123456789') }}%27&limit=100&offset=0"},
+        {"Key": "scopes", "ValueString": "falconx-indicators:read"},
+        {"Key": "trace_id", "ValueString": "{{ random_guid() }}"},
+        {"Key": "request_accept", "ValueString": "application/json"},
+        {"Key": "request_uri_length", "ValueString": "165"},
+        {"Key": "status_code", "ValueString": "200"},
+        {"Key": "user_agent", "ValueString": "proofpoint_TapPreDelivery_v1"},
+        {"Key": "elapsed_time", "ValueString": "{{ random_int(40, 90) }}.{{ random_int(100000, 999999) }}ms"},
+        {"Key": "elapsed_microseconds", "ValueString": "{{ random_int(40000, 90000) }}"},
+        {"Key": "produces", "ValueString": "[application/json]"}
+      ],
+      "Attributes": {
+        "APIClientID": "{{ random_guid() }}",
+        "cid": "{{ registry.get_random_user().id or random_guid() }}",
+        "elapsed_microseconds": "{{ random_int(40000, 90000) }}",
+        "elapsed_time": "{{ random_int(40, 90) }}.{{ random_int(100000, 999999) }}ms",
+        "produces": "[application/json]",
+        "received_time": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}",
+        "request_accept": "application/json",
+        "request_method": "GET",
+        "request_path": "/intel/combined/indicators/v1",
+        "request_query": "filter=type%3A%27hash_sha256%27%2Bindicator%3A%27{{ random_string(64, 'abcdef0123456789') }}%27&limit=100&offset=0",
+        "request_uri_length": "165",
+        "scopes": "falconx-indicators:read",
+        "status_code": "200",
+        "trace_id": "{{ random_guid() }}",
+        "user_agent": "proofpoint_TapPreDelivery_v1",
+        "user_ip": "{{ random_public_ip() }}"
+      },
+      "Message": "",
+      "Source": "api_request",
+      "SourceIp": "{{ random_public_ip() }}"
+    },
+    "ta_data": {
+      "Feed_id": "0",
+      "Multiple_feeds": "False",
+      "Cloud_environment": "us_commercial2",
+      "TA_version": "3.2.1",
+      "Input": "initech_crowdstrike",
+      "App_id": "US_Comm_ALL",
+      "Event_types": "['All']",
+      "Initial_start": "historic"
+    }
+  }

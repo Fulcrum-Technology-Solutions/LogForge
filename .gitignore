@@ -38,7 +38,4 @@ logs/
 
 # Local configuration
 .env
-.env.local
-
-# Generated templates
-templates/
+.env.locals
