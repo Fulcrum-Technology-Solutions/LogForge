@@ -57,7 +57,16 @@ def configure_logging(verbose: bool):
         
     # Add our handlers
     root_logger.addHandler(file_handler)
+    
+    # Add console handler for command-line interface messages only
+    # Error messages from the application itself should only go to the log file
     root_logger.addHandler(console_handler)
+    
+    # Set all loggers for synth_logs modules to not propagate to the console handler
+    for logger_name in ['synth_logs', 'synth_logs.core', 'synth_logs.outputs', 'synth_logs.core.templates']:
+        module_logger = logging.getLogger(logger_name)
+        module_logger.propagate = False
+        module_logger.addHandler(file_handler)
     
     # Log startup information
     logging.info(f"Logging initialized. Log file: {log_file}")

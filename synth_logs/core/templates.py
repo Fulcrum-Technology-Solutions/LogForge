@@ -256,12 +256,13 @@ class TemplateManager:
         return datetime.datetime.now().timestamp()
         
     @staticmethod
-    def format_timestamp(timestamp: Optional[float] = None, format_str: str = '%Y-%m-%d %H:%M:%S') -> str:
+    def format_timestamp(timestamp: Optional[float] = None, format_str: str = '%Y-%m-%d %H:%M:%S', offset_seconds: int = 0) -> str:
         """Format a timestamp.
         
         Args:
             timestamp: The timestamp to format (default current time)
             format_str: The format string (default '%Y-%m-%d %H:%M:%S')
+            offset_seconds: Seconds to add/subtract from the timestamp (default 0)
             
         Returns:
             The formatted timestamp
@@ -270,6 +271,10 @@ class TemplateManager:
             dt = datetime.datetime.now()
         else:
             dt = datetime.datetime.fromtimestamp(timestamp)
+            
+        # Apply offset if provided
+        if offset_seconds != 0:
+            dt = dt + datetime.timedelta(seconds=offset_seconds)
             
         return dt.strftime(format_str)
         
