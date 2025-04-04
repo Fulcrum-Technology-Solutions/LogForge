@@ -20,11 +20,11 @@
   </System>
   <EventData>
     <Data Name="SubjectUserSid">S-1-5-18</Data>
-    <Data Name="SubjectUserName">{{ username }}</Data>
+    <Data Name="SubjectUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
     <Data Name="SubjectDomainName">{{ domain }}</Data>
     <Data Name="SubjectLogonId">0x3e7</Data>
     <Data Name="TargetUserSid">S-1-5-21-12345-12345-12345-12345</Data>
-    <Data Name="TargetUserName">{{ username }}</Data>
+    <Data Name="TargetUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
     <Data Name="TargetDomainName">{{ domain }}</Data>
     <Data Name="TargetLogonId">0x4f8</Data>
     <Data Name="LogonType">{{ logon_type }}</Data>
@@ -37,7 +37,7 @@
     <Data Name="KeyLength">0</Data>
     <Data Name="ProcessId">0x4</Data>
     <Data Name="ProcessName">C:\Windows\System32\svchost.exe</Data>
-    <Data Name="IpAddress">{{ ip_address }}</Data>
+    <Data Name="IpAddress">{{ registry.get_random_device().ip_address if registry.get_random_device() else random_private_ip() }}</Data>
     <Data Name="IpPort">58742</Data>
     <Data Name="ImpersonationLevel">%%1833</Data>
     <Data Name="RestrictedAdminMode">-</Data>

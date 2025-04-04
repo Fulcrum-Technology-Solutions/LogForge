@@ -12,7 +12,7 @@
     <Correlation />
     <Execution ProcessID="{{ process_id }}" ThreadID="{{ thread_id }}" />
     <Channel>Application</Channel>
-    <Computer>{{ hostname }}</Computer>
+    <Computer>{{ registry.get_random_device().hostname if registry.get_random_device() else "WIN-" + random_string(8).upper() }}</Computer>
     <Security />
   </System>
   <EventData>

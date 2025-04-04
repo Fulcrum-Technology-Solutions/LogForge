@@ -21,7 +21,7 @@
     <Data Name="SubjectDomainName">-</Data>
     <Data Name="SubjectLogonId">0x0</Data>
     <Data Name="TargetUserSid">S-1-0-0</Data>
-    <Data Name="TargetUserName">{{ username }}</Data>
+    <Data Name="TargetUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
     <Data Name="TargetDomainName">{{ domain }}</Data>
     <Data Name="Status">{{ status_code }}</Data>
     <Data Name="FailureReason">%%2313</Data>
@@ -35,7 +35,7 @@
     <Data Name="KeyLength">0</Data>
     <Data Name="ProcessId">0x4</Data>
     <Data Name="ProcessName">C:\Windows\System32\svchost.exe</Data>
-    <Data Name="IpAddress">{{ ip_address }}</Data>
+    <Data Name="IpAddress">{{ registry.get_random_device().ip_address if registry.get_random_device() else random_private_ip() }}</Data>
     <Data Name="IpPort">58742</Data>
   </EventData>
 </Event>

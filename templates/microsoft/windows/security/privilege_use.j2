@@ -17,11 +17,11 @@
   </System>
   <EventData>
     <Data Name="SubjectUserSid">S-1-5-18</Data>
-    <Data Name="SubjectUserName">{{ username }}</Data>
+    <Data Name="SubjectUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
     <Data Name="SubjectDomainName">{{ domain }}</Data>
     <Data Name="SubjectLogonId">0x3e7</Data>
     <Data Name="TargetUserSid">S-1-5-21-12345-12345-12345-12345</Data>
-    <Data Name="TargetUserName">{{ username }}</Data>
+    <Data Name="TargetUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
     <Data Name="TargetDomainName">{{ domain }}</Data>
     <Data Name="TargetLogonId">0x4f8</Data>
     <Data Name="LogonType">{{ logon_type }}</Data>
