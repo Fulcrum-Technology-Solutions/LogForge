@@ -23,6 +23,9 @@ class User:
     department: Optional[str] = None
     title: Optional[str] = None
     is_admin: bool = False
+    employee_type: Optional[str] = None
+    organization: Optional[str] = None
+    location: Optional[Dict[str, str]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.
@@ -31,6 +34,11 @@ class User:
             Dictionary representation of the user
         """
         return asdict(self)
+        
+    def __post_init__(self):
+        """Convert location dict to proper format if needed."""
+        if self.location is None:
+            self.location = {}
 
 
 @dataclass

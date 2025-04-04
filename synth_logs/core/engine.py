@@ -318,19 +318,25 @@ class Engine:
         """
         # Get the file extension from the generator's template path if available
         file_extension = None
+        metadata = None
+        
         if generator and hasattr(generator, 'template_path'):
             _, file_extension = os.path.splitext(generator.template_path)
+            
+            # Get metadata if available
+            if hasattr(generator, 'metadata') and generator.metadata:
+                metadata = generator.metadata
             
         for output in self.outputs:
             try:
                 # Log which output we're sending to (debug level only)
                 logger.debug(f"Sending log entry to output: {output.name} (type: {output.__class__.__name__})")
                 
-                # Pass the file extension to the output if it supports it
+                # Pass the file extension and metadata to the output if it supports it
                 result = False
                 if hasattr(output, 'send_with_extension'):
                     logger.debug(f"Output {output.name} supports send_with_extension method")
-                    result = output.send_with_extension(log_entry, file_extension)
+                    result = output.send_with_extension(log_entry, file_extension, metadata)
                 else:
                     logger.debug(f"Output {output.name} using standard send method")
                     result = output.send(log_entry)

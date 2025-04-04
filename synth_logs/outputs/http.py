@@ -183,21 +183,31 @@ class HttpAdapter(OutputAdapter):
                 if not self._handle_request_error(e, attempt, error_msg):
                     return False
                     
-    def send_with_extension(self, log_entry: str, file_extension: str = None) -> bool:
+    def send_with_extension(self, log_entry: str, file_extension: str = None, metadata: Dict[str, Any] = None) -> bool:
         """Send a log entry with a specific file extension.
         
         Args:
             log_entry: The log entry to send
             file_extension: The extension of the source file
+            metadata: Optional metadata from the template
             
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        # Create JSON object with event content and include file extension info
+        # Create JSON object with event content
         data = {
             'event': log_entry,
-            'format': file_extension.lstrip('.') if file_extension else None
         }
+        
+        # Add format info from metadata or file extension
+        format_value = 'unknown'
+        if metadata and 'format' in metadata:
+            format_value = metadata['format'].lower()
+        elif file_extension:
+            format_value = file_extension.lstrip('.')
+            
+        data['format'] = format_value
+        logger.debug(f"Setting format to '{format_value}' for log entry")
         
         # Try to send the request with retries
         for attempt in range(self.retry_count + 1):
