@@ -15,4 +15,3 @@ time_patterns:
 business_hours_multiplier: 1.5
 night_hours_multiplier: 0.3
 weekend_multiplier: 0.5
-s
