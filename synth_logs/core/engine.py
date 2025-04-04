@@ -295,7 +295,11 @@ class Engine:
                 frequency = generator.get_frequency()
                 if frequency > 0:
                     log_entry = generator.generate(self.registry)
-                    self._send_to_outputs(log_entry, generator)
+                    # Don't send error messages via HTTP, only log them
+                    if log_entry.startswith("ERROR:"):
+                        logger.error(log_entry)
+                    else:
+                        self._send_to_outputs(log_entry, generator)
                     
                 # Sleep for the time calculated from the frequency
                 sleep_time = 1.0 / frequency if frequency > 0 else 1.0
