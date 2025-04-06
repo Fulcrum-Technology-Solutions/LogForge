@@ -30,7 +30,7 @@ def configure_logging(verbose: bool):
     log_level = logging.DEBUG if verbose else logging.INFO
     
     # Create rotating file handler for detailed logs
-    log_file = os.path.join(log_dir, 'logforge.log')
+    log_file = os.path.join(log_dir, 'LogForge.log')
     file_handler = logging.handlers.RotatingFileHandler(
         filename=log_file,
         maxBytes=10*1024*1024,  # 10MB
@@ -331,7 +331,7 @@ def list_generators(ctx, config):
 
 @cli.command()
 @click.option('--user', '-u', default=None, help='User to run the service as')
-@click.option('--output', '-o', default='/etc/systemd/system/logforge.service',
+@click.option('--output', '-o', default='/etc/systemd/system/LogForge.service',
               help='Path to output the service file')
 @click.option('--config', '-c', required=True, type=click.Path(), 
               help='Path to configuration file (absolute path)')
@@ -379,10 +379,10 @@ WantedBy=multi-user.target
         click.echo(f"Service file created at {output}")
         click.echo("\nTo control the service:")
         click.echo("  sudo systemctl daemon-reload")
-        click.echo("  sudo systemctl enable logforge.service")
-        click.echo("  sudo systemctl start logforge.service")
-        click.echo("  sudo systemctl status logforge.service")
-        click.echo("  sudo systemctl stop logforge.service")
+        click.echo("  sudo systemctl enable LogForge.service")
+        click.echo("  sudo systemctl start LogForge.service")
+        click.echo("  sudo systemctl status LogForge.service")
+        click.echo("  sudo systemctl stop LogForge.service")
     except Exception as e:
         click.echo(f"Error creating service file: {e}", err=True)
         sys.exit(1)
@@ -415,7 +415,7 @@ def configure(ctx, config):
     
     while True:
         click.clear()
-        click.echo(click.style("🪵 Logforge Configuration Menu", fg='green', bold=True))
+        click.echo(click.style("🪵 LogForge Configuration Menu", fg='green', bold=True))
         click.echo(click.style("=" * 50, fg='green'))
         click.echo("")
         

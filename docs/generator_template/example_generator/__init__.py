@@ -1,1 +1,1 @@
-"""Example generator package for Logforge."""
+"""Example generator package for LogForge."""

@@ -1,6 +1,6 @@
-# Logforge Generator Template
+# LogForge Generator Template
 
-This is a template for creating new log generators for Logforge. Follow these steps to create your own custom generator package.
+This is a template for creating new log generators for LogForge. Follow these steps to create your own custom generator package.
 
 ## Structure
 
@@ -226,7 +226,7 @@ parameters:
 
 ## Usage
 
-Once installed, Logforge will automatically discover your generator. You can activate it in the configuration file:
+Once installed, LogForge will automatically discover your generator. You can activate it in the configuration file:
 
 ```yaml
 active_generators:

@@ -1,8 +1,8 @@
-# Logforge - Synthetic Event Log Generator
+# LogForge - Synthetic Event Log Generator
 
-Logforge is a Python-based application for generating synthetic but realistic event logs from various products including Windows Event Log, Palo Alto Firewall, and Azure AD authentication. It's designed to help security professionals, developers, and testers create realistic log data for testing, development, and training purposes.
+LogForge is a Python-based application for generating synthetic but realistic event logs from various products including Windows Event Log, Palo Alto Firewall, and Azure AD authentication. It's designed to help security professionals, developers, and testers create realistic log data for testing, development, and training purposes.
 
-Logforge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and Logforge will automatically generate realistic event logs.
+LogForge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and LogForge will automatically generate realistic event logs.
 
 ## Features
 
@@ -23,8 +23,8 @@ Logforge uses a template-based approach that doesn't require any coding to add n
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/logforge.git
-cd logforge
+git clone https://github.com/yourusername/LogForge.git
+cd LogForge
 
 # Install the package
 pip install -e .
@@ -32,12 +32,12 @@ pip install -e .
 
 ## Configuration
 
-Logforge uses YAML configuration files to define outputs, time patterns, and active generators. The initial configuration is minimal, and you can use the CLI menu to configure outputs and generators interactively.
+LogForge uses YAML configuration files to define outputs, time patterns, and active generators. The initial configuration is minimal, and you can use the CLI menu to configure outputs and generators interactively.
 
 ```yaml
 # Basic configuration
 # The initial config has no outputs configured
-# Logforge will prompt you to choose between file or HTTP output when first run
+# LogForge will prompt you to choose between file or HTTP output when first run
 outputs: []
 
 # Time patterns control frequency of logs throughout the day/week
@@ -188,29 +188,29 @@ The interactive CLI menu provides a guided setup for these authentication method
 
 ### Systemd Service
 
-To run Logforge as a systemd service:
+To run LogForge as a systemd service:
 
 1. Create the service file:
    ```bash
-   sudo synth-logs create-service --config /absolute/path/to/config.yaml --user logforge
+   sudo synth-logs create-service --config /absolute/path/to/config.yaml --user LogForge
    ```
 
 2. Control the service:
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl enable logforge.service
-   sudo systemctl start logforge.service
-   sudo systemctl status logforge.service
-   sudo systemctl stop logforge.service
+   sudo systemctl enable LogForge.service
+   sudo systemctl start LogForge.service
+   sudo systemctl status LogForge.service
+   sudo systemctl stop LogForge.service
    ```
 
 ## Extending
 
-Logforge is designed to be easily extended with new log generators using a template-based approach that requires no coding.
+LogForge is designed to be easily extended with new log generators using a template-based approach that requires no coding.
 
 ### Adding Custom Data Sources
 
-Logforge uses a template-only approach to create log generators. This simplifies the process of adding new log types without writing any code.
+LogForge uses a template-only approach to create log generators. This simplifies the process of adding new log types without writing any code.
 
 #### Creating Templates and Metadata
 
@@ -218,7 +218,7 @@ To add a new log type:
 
 1. Create a template file in the `templates` directory following the vendor/product/data_source structure
 2. Add a corresponding `.meta.yaml` file with the same name
-3. Logforge automatically discovers and creates generators from these templates
+3. LogForge automatically discovers and creates generators from these templates
 
 Example directory structure:
 ```

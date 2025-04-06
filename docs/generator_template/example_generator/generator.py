@@ -1,4 +1,4 @@
-"""Example log generator for Logforge."""
+"""Example log generator for LogForge."""
 
 import datetime
 import logging
