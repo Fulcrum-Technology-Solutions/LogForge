@@ -115,7 +115,7 @@ The application should use a plugin-based architecture with the following compon
 ## Example Code Structure
 
 ```
-synth-logs/
+logforge/
 ├── synth_logs/
 │   ├── __init__.py
 │   ├── cli.py                 # CLI interface

@@ -236,5 +236,5 @@ active_generators:
 Or use the interactive menu:
 
 ```bash
-synth-logs configure --config config.yaml
+logforge configure --config config.yaml
 ```

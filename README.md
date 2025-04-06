@@ -105,19 +105,19 @@ outputs:
 
 ```bash
 # Run with a configuration file
-synth-logs run --config config.yaml
+logforge run --config config.yaml
 
 # List available generators
-synth-logs list-generators --config config.yaml
+logforge list-generators --config config.yaml
 
 # Interactive configuration menu (recommended for first-time setup)
-synth-logs configure --config config.yaml
+logforge configure --config config.yaml
 
 # Create a systemd service (after configuring)
-synth-logs create-service --config /absolute/path/to/config.yaml --user logforge
+logforge create-service --config /absolute/path/to/config.yaml --user LogForge
 
 # Run with verbose output (shows errors on console)
-synth-logs -v run --config config.yaml
+logforge -v run --config config.yaml
 ```
 
 ### Log File Output
@@ -192,7 +192,7 @@ To run LogForge as a systemd service:
 
 1. Create the service file:
    ```bash
-   sudo synth-logs create-service --config /absolute/path/to/config.yaml --user LogForge
+   sudo logforge create-service --config /absolute/path/to/config.yaml --user LogForge
    ```
 
 2. Control the service:
