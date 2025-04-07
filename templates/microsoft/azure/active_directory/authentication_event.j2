@@ -1,0 +1,128 @@
+{
+    "Level": "{{ ['1', '2', '3','4'] | random }}",
+    "callerIpAddress": "{{ ['206.55.168.133', '10.10.10.10', '192.168.1.1'] | random }}",
+    "category": "{{ ['SignInLogs', 'PasswordChangeLogs', 'UserActivityLogs'] | random }}",
+    "correlationId": "{{ ['z1b2c3-2019-4c59-bbaf-165f91b9e8fk', 'y1c3d4-1019-5c59-bbaf-265f92b9e8fj', 'x1d4e5-0019-6c59-bbaf-365f93b9e8fi','w1e5f6-9019-7c59-bbaf-465f94b9e8fh'] | random }}",
+    "durationMs": "{{  range(0, 1000) | random  }}",
+    "identity": "{{ registry.get_random_user().username if registry.get_random_user() else ["jsmith", "alee", "bjohnson", "mwilliams", "dthomas"] | random }}",
+    "location": "US",
+    "operationName": "{{ ['Sign-in activity', 'Password change', 'User registration'] | random }}",
+    "operationVersion": "1.0",
+    "properties": {
+      "appDisplayName": "Windows Sign In",
+      "appId": "{{ ['h1x2v5-a06d-4817-b275-7a511988d93g', 'i2y3v4-b07d-4817-b275-8a416288d93h', 'j3z4v3-c08d-4817-b275-9a116938d93o','k4a5v2-d09d-4817-b275-0a216984d93p'] | random }}",
+      "appServicePrincipalId": "null",
+      "appliedConditionalAccessPolicies": [
+      ],
+      "authenticationContextClassReferences": [
+      ],
+      "authenticationDetails": [
+        {
+          "RequestSequence": "1",
+          "StatusSequence": "0",
+          "authenticationMethod": "Windows Hello for Business",
+          "authenticationMethodDetail": "",
+          "authenticationStepDateTime": "{{ timestamp }}",
+          "authenticationStepRequirement": "Primary authentication",
+          "succeeded": "true"
+        }
+      ],
+      "authenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "authenticationProtocol": "none",
+      "authenticationRequirement": "singleFactorAuthentication",
+      "authenticationRequirementPolicies": [
+      ],
+      "authenticationStrengths": [
+      ],
+      "autonomousSystemNumber": "209",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "clientCredentialType": "none",
+      "conditionalAccessStatus": "notApplied",
+      "correlationId": "{{ ['z1b2c3-2019-4c59-bbaf-165f91b9e8fk', 'y1c3d4-1019-5c59-bbaf-265f92b9e8fj', 'x1d4e5-0019-6c59-bbaf-365f93b9e8fi','w1e5f6-9019-7c59-bbaf-465f94b9e8fh'] | random }}",
+      "createdDateTime": "{{ timestamp }}",
+      "crossTenantAccessType": "none",
+      "deviceDetail": {
+        "deviceId": "{{ registry.get_random_device().hostname if registry.get_random_device() else "WIN-" + random_string(8).upper() }}",
+          "displayName": "{{ hostname }}",
+          "operatingSystem": "Windows",
+          "isCompliant": "{{ [True, False] | random }}",
+          "isManaged": "{{ [True, False] | random }}",
+          "trustType": "Azure AD joined" 
+      },
+      "flaggedForReview": "{{ [True, False] | random }}",
+      "homeTenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "id": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "incomingTokenType": "primaryRefreshToken",
+      "ipAddress": "{{ ['206.55.168.133', '10.10.10.10', '192.168.1.1'] | random }}",
+      "isInteractive": "{{ [True, False] | random }}",
+      "isTenantRestricted": "{{ [True, False] | random }}",
+      "isThroughGlobalSecureAccess": "{{ [True, False] | random }}",
+      "location": {
+        "city": "Westminster",
+        "countryOrRegion": "US",
+        "geoCoordinates": {
+          "latitude": "39.84273147583008",
+          "longitude": "-105.04839324951172"
+        },
+        "state": "Colorado"
+      },
+      "mfaDetail": {
+      },
+      "networkLocationDetails": [
+      ],
+      "originalRequestId": "75b1-4164-a460-a7177d1d0400",
+      "originalTransferMethod": "none",
+      "privateLinkDetails": {
+      },
+      "processingTimeInMilliseconds": "{{  range(0, 1000) | random  }}",
+      "resourceDisplayName": "Windows Azure Active Directory",
+      "resourceId": "00000002-0000-0000-c000-000000000000",
+      "resourceOwnerTenantId": "{{  ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "resourceServicePrincipalId": "{{  ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "resourceTenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "riskDetail": "none",
+      "riskEventTypes": [
+      ],
+      "riskEventTypes_v2": [
+      ],
+      "riskLevelAggregated": "none",
+      "riskLevelDuringSignIn": "none",
+      "riskState": "none",
+      "rngcStatus": "0",
+      "servicePrincipalId": "",
+      "sessionId": "{{ random_guid() }}",
+      "sessionLifetimePolicies": [
+      ],
+      "signInTokenProtectionStatus": "none",
+      "ssoExtensionVersion": "",
+      "status": {
+        "additionalDetails": "MFA requirement satisfied by claim in the token",
+        "errorCode": "0"
+      },
+      "tenantId": "tokenIssuerName:",
+      "tokenIssuerType": "AzureAD",
+      "tokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": "0"
+      },
+      "uniqueTokenIdentifier": "s3iBGbF1kYKcXfR0EAA",
+      "userAgent": "Windows-AzureAD-Authentication-Provider/1.0",
+      "userDisplayName": "{{ username }}",
+      "userId": "110fcaa9-d6b0-4844-8a72-1e97f5058078",
+      "userPrincipalName": "{{ username }}",
+      "userType": "Member"
+     },
+  "resourceId": "/tenants/9459a--4e80-9f8c-5a91bdd/providers/Microsoft.aadiam",
+  "resultSignature": "None",
+  "resultType": "0",
+  "tenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}"
+  }
