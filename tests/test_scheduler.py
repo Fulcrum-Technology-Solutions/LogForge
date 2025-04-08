@@ -25,6 +25,7 @@ def test_time_pattern_creation():
     assert DayOfWeek.TUESDAY in pattern.days_of_week
     assert pattern.multiplier == 2.0
 
+
 def test_is_active():
     """Test TimePattern initialization - without testing is_active."""
     # Since testing is_active requires mocking datetime
@@ -44,9 +45,9 @@ def test_is_active():
     assert DayOfWeek.MONDAY in pattern.days_of_week
     assert pattern.multiplier == 2.0
 
+
 def test_scheduler_basics():
     """Test basic Scheduler functionality."""
     scheduler = Scheduler()
-    
     # Simply check that it initializes correctly
     assert hasattr(scheduler, 'patterns')

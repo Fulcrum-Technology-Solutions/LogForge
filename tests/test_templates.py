@@ -1,10 +1,6 @@
 """Basic tests for templates module."""
 
-import os
-import tempfile
-import pytest
 from synth_logs.core.templates import TemplateManager
-from synth_logs.core.registry import EntityRegistry
 
 
 def test_template_manager_init():
@@ -13,6 +9,7 @@ def test_template_manager_init():
     assert manager.template_dirs is not None
     assert manager.environment is not None
 
+
 def test_random_guid():
     """Test random GUID generation."""
     manager = TemplateManager()
@@ -20,12 +17,14 @@ def test_random_guid():
     assert len(guid) == 36
     assert guid.count("-") == 4
 
+
 def test_random_ip():
     """Test random IP generation."""
     manager = TemplateManager()
     ip = manager.random_ip()
     assert len(ip.split(".")) == 4
-    
+
+
 def test_random_private_ip():
     """Test random private IP generation."""
     manager = TemplateManager()
@@ -34,9 +33,10 @@ def test_random_private_ip():
     assert len(parts) == 4
     first_octet = int(parts[0])
     second_octet = int(parts[1])
-    assert (first_octet == 10 or 
-            (first_octet == 172 and 16 <= second_octet <= 31) or 
+    assert (first_octet == 10 or
+            (first_octet == 172 and 16 <= second_octet <= 31) or
             (first_octet == 192 and second_octet == 168))
+
 
 def test_template_manager_environment():
     """Test template manager environment setup."""
