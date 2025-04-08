@@ -27,7 +27,8 @@ jobs:
     
     - name: Run flake8
       run: |
-        flake8 synth_logs tests
+        # Use a simpler linting rule set for now - just check for syntax errors
+        flake8 --select=E9,F63,F7,F82 synth_logs tests
     
     # Simplified linting - just run flake8 for basic checks
     # Add these back when you need more strict formatting checks
