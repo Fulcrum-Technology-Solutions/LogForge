@@ -72,6 +72,60 @@ time_patterns:
 active_generators: []
 ```
 
+### Log Generation Frequency Control
+
+LogForge provides a sophisticated system for controlling the frequency of log generation to create realistic patterns that mirror actual production environments:
+
+#### Base Frequency
+
+The `base_frequency` parameter is defined in each generator's metadata file and represents:
+
+- **Events per second**: A value of 1.0 means approximately one log entry per second
+- **Time between events**: A value of 0.5 means approximately one entry every 2 seconds
+- **Starting point**: The actual generation rate is calculated by applying time pattern multipliers to this base value
+
+For example, a common Windows login event might have a higher base frequency (0.5) than a rare system error (0.05).
+
+#### Time Patterns
+
+Time patterns allow you to model how event frequency changes throughout the day and week:
+
+```yaml
+time_patterns:
+  - name: business_hours          # Descriptive name for the pattern
+    base_frequency: 1.0           # Not used (use generator's base_frequency)
+    start_time: "09:00"           # Pattern active start time (24-hour format)
+    end_time: "17:00"             # Pattern active end time
+    days_of_week: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]  # Days when pattern is active
+    multiplier: 2.0               # Multiply generator's base_frequency by this value when pattern is active
+```
+
+When a time pattern is active (current time is within its time range and on a matching day), it applies its multiplier to the generator's base frequency.
+
+#### Multipliers
+
+Multipliers directly scale the event frequency up or down:
+
+- **Multiplier > 1.0**: Increases event frequency (2.0 = double the events)
+- **Multiplier < 1.0**: Decreases event frequency (0.5 = half the events)
+- **Default = 1.0**: When no patterns are active or specified
+
+#### How Frequency is Calculated
+
+1. Start with the generator's `base_frequency` (e.g., 0.2 events/second)
+2. Check which time patterns are currently active
+3. Multiply the base frequency by the multiplier of each active pattern
+4. Add some randomness (±20%) to create natural variation
+
+For example:
+- Base frequency = 0.2 (1 event every 5 seconds)
+- Active patterns: business_hours (2.0) and monday_boost (1.5)
+- Effective frequency = 0.2 × 2.0 × 1.5 = 0.6 (3x faster, or about 1 event every 1.7 seconds)
+
+This system lets you create realistic log patterns that reflect business hours, after-hours maintenance, weekend quiet periods, and other real-world scenarios.
+
+Each log generator can reference different time patterns in its metadata, allowing Windows login events to follow one pattern while firewall logs follow another.
+
 ### Entity Registry
 
 The entity registry (`entities.yaml`) defines the users, devices, and services that can be referenced in log templates:
@@ -387,14 +441,14 @@ frequency: high
 
 # Generator settings for template-based generators
 is_generator: true
-base_frequency: 0.2
-time_patterns:
-  - business_hours
+base_frequency: 0.2          # Base rate: 1 event every 5 seconds
+time_patterns:               # List of time patterns that affect this generator
+  - business_hours           # References patterns defined in config.yaml
   - night_hours
   - weekend
-business_hours_multiplier: 2.0
-night_hours_multiplier: 0.3
-weekend_multiplier: 0.5
+business_hours_multiplier: 2.0    # Override the default multiplier for this generator
+night_hours_multiplier: 0.3       # Lower frequency after business hours
+weekend_multiplier: 0.5           # Medium frequency on weekends
 
 # Context values for rendering
 context:
