@@ -114,6 +114,9 @@ class TemplateManager:
             }
             
             if context:
+                # Add the entire context object as a global variable
+                full_context['context'] = context
+                # Also merge context values into the global namespace
                 full_context.update(context)
                 
             return template.render(**full_context)
