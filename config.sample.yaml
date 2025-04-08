@@ -3,6 +3,20 @@
 # Entity registry - path to the registry file
 entity_registry: "entities.sample.yaml"
 
+# Network ranges configuration for internal IP address generation
+# Each range needs a start_ip and end_ip, and can optionally have a name
+# The name can be referenced in templates with random_private_ip('name')
+network_ranges:
+  - start_ip: "10.1.0.0"
+    end_ip: "10.1.255.255"
+    name: "office"
+  - start_ip: "10.2.0.0"
+    end_ip: "10.2.255.255"
+    name: "datacenter"
+  - start_ip: "192.168.1.0"
+    end_ip: "192.168.1.255"
+    name: "vpn"
+
 # Output configuration
 # Initially empty - the application will prompt for output configuration on first run
 outputs: []

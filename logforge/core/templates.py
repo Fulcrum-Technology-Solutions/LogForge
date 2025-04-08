@@ -21,17 +21,30 @@ logger = logging.getLogger(__name__)
 class TemplateManager:
     """Manager for log templates."""
     
-    def __init__(self, template_dirs: Optional[List[str]] = None):
+    def __init__(self, template_dirs: Optional[List[str]] = None, network_ranges: Optional[List[Tuple[str, str]]] = None):
         """Initialize the template manager.
         
         Args:
             template_dirs: Directories to search for templates (defaults to 'templates' directory)
+            network_ranges: List of tuples with start and end IP addresses for internal networks
+                           (defaults to standard private ranges if None)
         """
         if template_dirs is None:
             # Default to 'templates' directory relative to this file
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             template_dirs = [os.path.join(base_dir, 'templates')]
-            
+        
+        # Set default network ranges if not provided
+        if network_ranges is None:
+            # Default private IP ranges
+            self.network_ranges = [
+                ('10.0.0.0', '10.255.255.255'),        # 10.0.0.0/8
+                ('172.16.0.0', '172.31.255.255'),      # 172.16.0.0/12
+                ('192.168.0.0', '192.168.255.255')     # 192.168.0.0/16
+            ]
+        else:
+            self.network_ranges = network_ranges
+        
         self.template_dirs = template_dirs
         self.environment = self._create_environment()
         self.metadata_cache = {}
@@ -133,8 +146,7 @@ class TemplateManager:
         """
         return str(uuid.uuid4())
         
-    @staticmethod
-    def random_ip() -> str:
+    def random_ip(self) -> str:
         """Generate a random public IP address.
         
         Returns:
@@ -146,21 +158,53 @@ class TemplateManager:
             if not ip.is_private and not ip.is_reserved:
                 return str(ip)
                 
-    @staticmethod
-    def random_private_ip() -> str:
+    def random_private_ip(self, subnet: str = None) -> str:
         """Generate a random private IP address.
         
+        Args:
+            subnet: Optional subnet identifier to select a specific network range
+                  (e.g., '10.0.0.0/8' or 'office' if defined in config)
+                  
         Returns:
             A random private IP address
         """
-        # Generate a random private IP from common private ranges
-        private_ranges = [
-            ('10.0.0.0', '10.255.255.255'),        # 10.0.0.0/8
-            ('172.16.0.0', '172.31.255.255'),      # 172.16.0.0/12
-            ('192.168.0.0', '192.168.255.255')     # 192.168.0.0/16
-        ]
+        # If a specific subnet is requested, try to find it
+        if subnet:
+            # Handle CIDR notation (e.g., 10.0.0.0/8)
+            if '/' in subnet:
+                try:
+                    network = ipaddress.IPv4Network(subnet)
+                    start_int = int(network.network_address)
+                    end_int = int(network.broadcast_address)
+                    ip_int = random.randint(start_int, end_int)
+                    return str(ipaddress.IPv4Address(ip_int))
+                except ValueError:
+                    # If invalid CIDR, fall back to configured ranges
+                    logger.warning(f"Invalid CIDR notation: {subnet}, falling back to configured ranges")
+            
+            # Handle named subnets from configuration
+            for range_info in self.network_ranges:
+                if len(range_info) > 2 and range_info[2] == subnet:
+                    start, end = range_info[0], range_info[1]
+                    start_int = int(ipaddress.IPv4Address(start))
+                    end_int = int(ipaddress.IPv4Address(end))
+                    ip_int = random.randint(start_int, end_int)
+                    return str(ipaddress.IPv4Address(ip_int))
         
-        start, end = random.choice(private_ranges)
+        # If no specific subnet or subnet not found, choose from all configured ranges
+        if not self.network_ranges:
+            # Fallback to default ranges if none configured
+            default_ranges = [
+                ('10.0.0.0', '10.255.255.255'),        # 10.0.0.0/8
+                ('172.16.0.0', '172.31.255.255'),      # 172.16.0.0/12
+                ('192.168.0.0', '192.168.255.255')     # 192.168.0.0/16
+            ]
+            start, end = random.choice(default_ranges)
+        else:
+            # Choose a random range from the configured ones
+            range_choice = random.choice(self.network_ranges)
+            start, end = range_choice[0], range_choice[1]
+        
         start_int = int(ipaddress.IPv4Address(start))
         end_int = int(ipaddress.IPv4Address(end))
         

@@ -1,12 +1,13 @@
 """Command-line interface for the synthetic log generator."""
 
 import datetime
+import ipaddress
 import logging
 import logging.handlers
 import os
 import sys
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 import yaml
@@ -109,7 +110,31 @@ def setup_engine(config: dict) -> Engine:
     Returns:
         The configured engine
     """
-    engine = Engine()
+    # Process network ranges configuration
+    network_ranges = None
+    if 'network_ranges' in config:
+        network_ranges = []
+        for range_config in config.get('network_ranges', []):
+            start_ip = range_config.get('start_ip')
+            end_ip = range_config.get('end_ip')
+            name = range_config.get('name')
+            
+            if start_ip and end_ip:
+                try:
+                    # Validate IP addresses
+                    ipaddress.IPv4Address(start_ip)
+                    ipaddress.IPv4Address(end_ip)
+                    
+                    # Add to network ranges
+                    if name:
+                        network_ranges.append((start_ip, end_ip, name))
+                    else:
+                        network_ranges.append((start_ip, end_ip))
+                except ValueError as e:
+                    click.echo(f"Invalid IP address in network range: {e}", err=True)
+    
+    # Initialize engine with network ranges
+    engine = Engine(network_ranges)
     
     # Load entity registry if specified
     if 'entity_registry' in config:

@@ -440,7 +440,9 @@ Logforge provides a rich set of template functions to generate random synthetic 
 
 #### Network-related Functions
 - `random_ip()` or `random_public_ip()`: Generate a random public IP address
-- `random_private_ip()`: Generate a random private IP from common private ranges
+- `random_private_ip([subnet])`: Generate a random private IP address
+  - Optionally specify a subnet name or CIDR notation (e.g., `random_private_ip('office')` or `random_private_ip('10.0.0.0/24')`)
+  - Subnets can be configured in config.yaml (see "Configuring Internal Networks" below)
 - `random_port(min_port=1024, max_port=65535)`: Generate a random port number
 - `random_mac()`: Generate a random MAC address
 

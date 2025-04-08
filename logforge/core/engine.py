@@ -8,7 +8,7 @@ import os
 import random
 import threading
 import time
-from typing import Dict, List, Set, Type, Optional, Any
+from typing import Dict, List, Set, Type, Optional, Any, Tuple
 
 from logforge.core.registry import EntityRegistry
 from logforge.core.scheduler import Scheduler
@@ -160,19 +160,25 @@ class TemplateBasedGenerator(LogGenerator):
 class Engine:
     """Core engine for the synthetic log generator."""
     
-    def __init__(self):
-        """Initialize the engine."""
+    def __init__(self, network_ranges: List[Tuple[str, str]] = None):
+        """Initialize the engine.
+        
+        Args:
+            network_ranges: Optional list of tuples with start and end IP addresses for internal networks
+                           Each tuple can optionally include a name as a third element
+        """
         self.generators: Dict[str, LogGenerator] = {}
         self.outputs: List[OutputAdapter] = []
         self.registry = EntityRegistry()
         self.scheduler = Scheduler()
         self.running = False
         self.threads: List[threading.Thread] = []
+        self.network_ranges = network_ranges
         
         # Initialize template manager
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         template_dir = os.path.join(base_dir, 'templates')
-        self.template_manager = TemplateManager([template_dir])
+        self.template_manager = TemplateManager([template_dir], network_ranges)
         
     def is_running(self) -> bool:
         """Check if the engine is running.
