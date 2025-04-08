@@ -1,5 +1,6 @@
 """Command-line interface for the synthetic log generator."""
 
+import datetime
 import logging
 import logging.handlers
 import os
@@ -153,14 +154,18 @@ def setup_engine(config: dict) -> Engine:
             default_output = {
                 "type": "file",
                 "name": "default_file_output",
-                "file_path": "logs/logforge.json",
+                "output_dir": "logs",
+                "base_filename": "logforge",
+                "default_extension": ".log",
                 "hourly_rotation": True,
                 "data_source_field": "generator"
             }
             
             # Add it to the engine
             engine.add_output(FileAdapter(
-                file_path=default_output["file_path"],
+                output_dir=default_output["output_dir"],
+                base_filename=default_output["base_filename"],
+                default_extension=default_output["default_extension"],
                 name=default_output["name"],
                 hourly_rotation=default_output["hourly_rotation"],
                 data_source_field=default_output["data_source_field"]
@@ -176,24 +181,56 @@ def setup_engine(config: dict) -> Engine:
         if output_type == 'stdout':
             engine.add_output(StdoutAdapter(name=name))
         elif output_type == 'file':
-            file_path = output_config.get('file_path')
-            if not file_path:
-                click.echo(f"Missing file_path for file output: {name}", err=True)
-                continue
+            # Support both new and old configuration formats
+            if 'file_path' in output_config:
+                # Old format
+                file_path = output_config.get('file_path')
+                if not file_path:
+                    click.echo(f"Missing file_path for file output: {name}", err=True)
+                    continue
+                    
+                output_dir = os.path.dirname(file_path)
+                filename = os.path.basename(file_path)
+                base_filename, ext = os.path.splitext(filename)
+                if not ext:
+                    ext = '.log'
+                    
+                max_size = output_config.get('max_size')
+                backup_count = output_config.get('backup_count', 5)
+                hourly_rotation = output_config.get('hourly_rotation', True)
+                data_source_field = output_config.get('data_source_field')
                 
-            max_size = output_config.get('max_size')
-            backup_count = output_config.get('backup_count', 5)
-            hourly_rotation = output_config.get('hourly_rotation', True)
-            data_source_field = output_config.get('data_source_field')
-            
-            engine.add_output(FileAdapter(
-                file_path=file_path,
-                name=name,
-                max_size=max_size,
-                backup_count=backup_count,
-                hourly_rotation=hourly_rotation,
-                data_source_field=data_source_field
-            ))
+                engine.add_output(FileAdapter(
+                    output_dir=output_dir,
+                    base_filename=base_filename,
+                    default_extension=ext,
+                    name=name,
+                    max_size=max_size,
+                    backup_count=backup_count,
+                    hourly_rotation=hourly_rotation,
+                    data_source_field=data_source_field
+                ))
+            else:
+                # New format
+                output_dir = output_config.get('output_dir', 'logs')
+                base_filename = output_config.get('base_filename', 'logforge')
+                default_extension = output_config.get('default_extension', '.log')
+                
+                max_size = output_config.get('max_size')
+                backup_count = output_config.get('backup_count', 5)
+                hourly_rotation = output_config.get('hourly_rotation', True)
+                data_source_field = output_config.get('data_source_field')
+                
+                engine.add_output(FileAdapter(
+                    output_dir=output_dir,
+                    base_filename=base_filename,
+                    default_extension=default_extension,
+                    name=name,
+                    max_size=max_size,
+                    backup_count=backup_count,
+                    hourly_rotation=hourly_rotation,
+                    data_source_field=data_source_field
+                ))
         elif output_type == 'http':
             url = output_config.get('url')
             if not url:
@@ -910,27 +947,52 @@ def configure_file_output():
     click.echo("")
     
     name = click.prompt("Output name", default="file_output")
-    file_path = click.prompt("File path", default="logs/logforge.json")
+    
+    # New configuration format with better separation
+    output_dir = click.prompt("Output directory", default="logs")
+    base_filename = click.prompt("Base filename (without extension)", default="logforge")
+    default_extension = click.prompt("Default extension (for formats without their own)", default=".log")
+    
     max_size = click.prompt("Max file size in bytes (0 for no limit)", default=0, type=int)
     backup_count = click.prompt("Number of backup files to keep", default=5, type=int)
-    hourly_rotation = click.confirm("Enable hourly rotation?", default=True)
-    data_source_field = click.prompt("Data source field for file separation (empty for none)", default="generator")
+    hourly_rotation = click.confirm("Enable hourly rotation with timestamps?", default=True)
+    data_source_field = click.prompt("Data source field for fallback separation (empty for none)", default="generator")
     
-    output = {
-        "type": "file",
-        "name": name,
-        "file_path": file_path,
-        "backup_count": backup_count,
-        "hourly_rotation": hourly_rotation,
-    }
+    # Show explanation of file naming pattern
+    click.echo("\nFiles will be named using this pattern:")
+    if hourly_rotation:
+        click.echo(f"  {output_dir}/{{template_folders}}_{{{datetime.datetime.now().strftime('%Y%m%d_%H')}}}_{base_filename}{{extension}}")
+        click.echo("  Example: logs/microsoft_windows_security_20250408_15_logforge.xml")
+    else:
+        click.echo(f"  {output_dir}/{{template_folders}}_{base_filename}{{extension}}")
+        click.echo("  Example: logs/microsoft_windows_security_logforge.xml")
     
-    if max_size > 0:
-        output["max_size"] = max_size
+    click.echo("\nExtension is determined by (in order of precedence):")
+    click.echo("1. Format from template metadata (e.g., XML, JSON)")
+    click.echo("2. Original template file extension")
+    click.echo(f"3. Default extension ({default_extension})")
+    
+    if click.confirm("\nDoes this configuration look correct?", default=True):
+        output = {
+            "type": "file",
+            "name": name,
+            "output_dir": output_dir,
+            "base_filename": base_filename,
+            "default_extension": default_extension,
+            "backup_count": backup_count,
+            "hourly_rotation": hourly_rotation,
+        }
         
-    if data_source_field:
-        output["data_source_field"] = data_source_field
-        
-    return output
+        if max_size > 0:
+            output["max_size"] = max_size
+            
+        if data_source_field:
+            output["data_source_field"] = data_source_field
+            
+        return output
+    else:
+        # Recursive call if they want to start over
+        return configure_file_output()
 
 
 def configure_http_output():

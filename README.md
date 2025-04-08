@@ -10,6 +10,7 @@ LogForge is a Python-based application for generating synthetic but realistic ev
 - **Data Source Handling**: Better identification of data sources from generator metadata
 - **File Naming**: More consistent handling of file naming and sanitization
 - **Folder-Based Naming**: File names now use template folder structure for organization
+- **Clearer Configuration**: Simplified file output configuration with separate directory and filename parameters
 
 LogForge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and LogForge will automatically generate realistic event logs.
 
@@ -177,16 +178,34 @@ You can create multiple entity files for different environments or scenarios.
 You can configure the following output types:
 
 #### File Output
+
 ```yaml
+# Recommended new format (version 1.1.0 and later):
 outputs:
   - type: file
     name: file_output
-    file_path: "logs/logforge.log"  # Base filename (extension will be determined by log format)
+    output_dir: "logs"              # Directory where log files will be stored
+    base_filename: "logforge"       # Base name used in all log files (without extension)
+    default_extension: ".log"       # Default extension when format can't be determined
     hourly_rotation: true           # Creates timestamped files (YYYYMMDD_HH)
     max_size: 10485760              # Optional: 10MB maximum file size before rotation
     backup_count: 5                 # Optional: Keep 5 backup files when rotating by size
     data_source_field: "generator"  # Optional: Field to use as fallback if folder structure can't be determined
 ```
+
+```yaml
+# Legacy format (still supported):
+outputs:
+  - type: file
+    name: file_output
+    file_path: "logs/logforge.log"  # Full path with filename
+    hourly_rotation: true
+    max_size: 10485760              # Optional: 10MB
+    backup_count: 5                 # Optional
+    data_source_field: "generator"  # Optional
+```
+
+The new format improves clarity by separating the directory from the base filename and explicitly defining the default extension, making it easier to understand the file naming process.
 
 #### HTTP Output
 ```yaml

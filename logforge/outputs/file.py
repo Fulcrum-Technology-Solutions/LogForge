@@ -14,14 +14,17 @@ logger = logging.getLogger(__name__)
 class FileAdapter(OutputAdapter):
     """Output adapter for sending logs to a file."""
     
-    def __init__(self, file_path: str, name: str = "file", 
+    def __init__(self, output_dir: str = "logs", base_filename: str = "logforge", 
+                 default_extension: str = ".log", name: str = "file", 
                  mode: str = "a", max_size: int = None, 
                  backup_count: int = 5, hourly_rotation: bool = True,
                  data_source_field: str = None):
         """Initialize the file adapter.
         
         Args:
-            file_path: The path to the file to write to
+            output_dir: Directory where log files will be stored
+            base_filename: Base name for log files (without extension)
+            default_extension: Default file extension for logs
             name: The name of the adapter
             mode: The file mode (default 'a' for append)
             max_size: Maximum file size in bytes before rotation (default None for no rotation)
@@ -31,7 +34,23 @@ class FileAdapter(OutputAdapter):
                                (default None, no separation)
         """
         super().__init__(name)
-        self.file_path = file_path
+        
+        # Handle backward compatibility with file_path parameter
+        if '/' in output_dir or '\\' in output_dir:
+            # Looks like this might be a full path, split into directory and filename
+            self.file_path = output_dir  # Store the original for backward compatibility
+            output_dir = os.path.dirname(output_dir)
+            filename_with_ext = os.path.basename(output_dir)
+            base_filename, ext = os.path.splitext(filename_with_ext)
+            if ext:
+                default_extension = ext
+        else:
+            # Construct file_path from components for backward compatibility
+            self.file_path = os.path.join(output_dir, f"{base_filename}{default_extension}")
+            
+        self.output_dir = output_dir
+        self.base_filename = base_filename
+        self.default_extension = default_extension
         self.mode = mode
         self.max_size = max_size
         self.backup_count = backup_count
@@ -42,7 +61,7 @@ class FileAdapter(OutputAdapter):
         self.current_hour: Optional[int] = None
         
         # Ensure base directory exists
-        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+        os.makedirs(os.path.abspath(output_dir), exist_ok=True)
         
         # Initialize current hour
         if self.hourly_rotation:
@@ -59,9 +78,6 @@ class FileAdapter(OutputAdapter):
         Returns:
             The file path
         """
-        base_dir = os.path.dirname(os.path.abspath(self.file_path))
-        base_name = os.path.basename(self.file_path)
-        
         # Get folder structure from metadata if available, otherwise use data_source
         folder_structure = ""
         template_path = None
@@ -89,32 +105,28 @@ class FileAdapter(OutputAdapter):
         
         logger.debug(f"Getting file path for data source: {effective_data_source} from template: {template_path}")
         
-        # Determine the file extension to use
-        configured_base_name = os.path.splitext(base_name)[0]
-        
         # Priority for file extension:
         # 1. Explicitly provided extension from config
         # 2. Extension from original template file path 
         # 3. Format specified in metadata
-        # 4. Default to .log
+        # 4. Default extension from adapter config
         
         if file_extension:
             # 1. Use the provided extension
-            output_filename = f"{configured_base_name}{file_extension}"
+            output_extension = file_extension
         elif template_path and os.path.splitext(template_path)[1]:
             # 2. Use the extension from the template file (but not .j2)
             template_ext = os.path.splitext(template_path)[1]
             if template_ext == '.j2':
                 # If template is .j2, try to look at the extension before .j2
-                template_base = os.path.splitext(os.path.splitext(template_path)[0])[0]
                 template_real_ext = os.path.splitext(os.path.splitext(template_path)[0])[1]
                 if template_real_ext:
-                    output_filename = f"{configured_base_name}{template_real_ext}"
+                    output_extension = template_real_ext
                 else:
-                    # Default to .log if can't determine
-                    output_filename = f"{configured_base_name}.log"
+                    # Default to configured extension if can't determine
+                    output_extension = self.default_extension
             else:
-                output_filename = f"{configured_base_name}{template_ext}"
+                output_extension = template_ext
         elif metadata and 'format' in metadata:
             # 3. Use format from metadata
             format_value = metadata['format'].lower()
@@ -129,19 +141,21 @@ class FileAdapter(OutputAdapter):
                 'syslog': '.log'
             }
             if format_value in format_to_ext:
-                output_filename = f"{configured_base_name}{format_to_ext[format_value]}"
+                output_extension = format_to_ext[format_value]
             else:
-                output_filename = f"{configured_base_name}.log"
+                output_extension = self.default_extension
         else:
-            # 4. Default to .log
-            output_filename = f"{configured_base_name}.log"
+            # 4. Default to configured extension
+            output_extension = self.default_extension
             
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
             timestamp = datetime.now().strftime("%Y%m%d_%H")
-            return os.path.join(base_dir, f"{effective_data_source}_{timestamp}_{output_filename}")
+            filename = f"{effective_data_source}_{timestamp}_{self.base_filename}{output_extension}"
         else:
-            return os.path.join(base_dir, f"{effective_data_source}_{output_filename}")
+            filename = f"{effective_data_source}_{self.base_filename}{output_extension}"
+            
+        return os.path.join(self.output_dir, filename)
     
     def _open_file(self, data_source: str = None, file_extension: str = None, metadata: Dict[str, Any] = None):
         """Open the file for writing.
