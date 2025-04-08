@@ -386,6 +386,10 @@ After=network.target
 Type=simple
 ExecStart={cmd}
 Restart=on-failure
+# Set working directory to LogForge root
+WorkingDirectory={os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}
+# Ensure Python doesn't buffer output
+Environment="PYTHONUNBUFFERED=1"
 """
 
     # Add user if specified

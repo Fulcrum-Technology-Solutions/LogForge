@@ -32,10 +32,16 @@ pip install -e .
 
 ## Configuration
 
-LogForge uses YAML configuration files to define outputs, time patterns, and active generators. The initial configuration is minimal, and you can use the CLI menu to configure outputs and generators interactively.
+LogForge uses YAML configuration files to define outputs, time patterns, and active generators. It also uses a separate entities YAML file to define users, devices, and services for use in log generation.
+
+### Main Configuration File
+
+The main configuration (`config.yaml`) contains the log generation settings:
 
 ```yaml
-# Basic configuration
+# Path to entity registry file
+entity_registry: "entities.yaml"
+
 # The initial config has no outputs configured
 # LogForge will prompt you to choose between file or HTTP output when first run
 outputs: []
@@ -64,6 +70,43 @@ time_patterns:
 # No generators activated by default
 # Use the CLI menu to add generators
 active_generators: []
+```
+
+### Entity Registry
+
+The entity registry (`entities.yaml`) defines the users, devices, and services that can be referenced in log templates:
+
+```yaml
+users:
+  - username: "jsmith"
+    full_name: "John Smith"
+    email: "jsmith@example.com"
+    user_id: "U1001"
+    department: "IT"
+    title: "System Administrator"
+    is_admin: true
+    employee_type: "employee"
+    organization: "Technology Services"
+
+devices:
+  - hostname: "WS001"
+    ip_address: "192.168.1.100"
+    mac_address: "00:1A:2B:3C:4D:5E"
+    device_id: "D1001"
+    os_type: "Windows 10"
+    os_version: "10.0.19044"
+    owner: "jsmith"
+
+services:
+  - name: "Web Server"
+    port: 80
+    protocol: "HTTP"
+    service_id: "S1001"
+    description: "Internal company website"
+    owner: "jsmith"
+```
+
+You can create multiple entity files for different environments or scenarios.
 ```
 
 ### Available Output Types
@@ -107,14 +150,26 @@ outputs:
 # Run with a configuration file
 logforge run --config config.yaml
 
+# Run with a custom entities file (overrides the one in config.yaml)
+logforge run --config config.yaml --entities local/entities.yaml
+
 # List available generators
 logforge list-generators --config config.yaml
+
+# List generators with a custom entities file
+logforge list-generators --config config.yaml --entities local/entities.yaml
 
 # Interactive configuration menu (recommended for first-time setup)
 logforge configure --config config.yaml
 
+# Configure with a custom entities file
+logforge configure --config config.yaml --entities local/entities.yaml
+
 # Create a systemd service (after configuring)
 logforge create-service --config /absolute/path/to/config.yaml --user LogForge
+
+# Create a service with a custom entities file
+logforge create-service --config /absolute/path/to/config.yaml --entities /absolute/path/to/entities.yaml --user LogForge
 
 # Run with verbose output (shows errors on console)
 logforge -v run --config config.yaml
