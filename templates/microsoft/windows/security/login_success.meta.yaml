@@ -22,6 +22,14 @@ context:
   logon_type: 2
   session_id: 1
 
+# Template uses Jinja2 set statement for variable reuse
+# This enables consistent entity references throughout the template:
+# - subject_user: The user performing the action (usually administrative)
+# - target_user: The user being logged in
+# - source_device: The device from which the login is occurring
+# - subject_sid, target_sid: Consistently generated SIDs for both users
+# - event_time: Formatted timestamp used throughout the event
+
 # Parameter definitions
 parameters:
   - name: username

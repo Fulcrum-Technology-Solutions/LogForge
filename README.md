@@ -455,15 +455,55 @@ Logforge provides a rich set of template functions to generate random synthetic 
 - `registry.get_random_device()`: Get a random device from the entity registry
 - `registry.get_random_service()`: Get a random service from the entity registry
 
+### Template Variable Reuse
+
+You can create reusable variables in your templates using Jinja2's `set` statement. This is particularly useful for:
+
+1. Creating coherent events with consistent entities
+2. Improving template readability
+3. Optimizing performance by avoiding repeated calls to registry functions
+
+Example using variable reuse in a JSON template:
+
+```jinja
+{%- set user = registry.get_random_user() -%}
+{%- set device = registry.get_random_device() -%}
+{%- set timestamp = current_timestamp() -%}
+{%- set event_type = ['info', 'warning', 'error'] | random -%}
+
+{
+  "timestamp": "{{ timestamp | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}",
+  "eventType": "{{ event_type }}",
+  "severity": "{{ event_type | capitalize }}",
+  "user": {
+    "username": "{{ user.username }}",
+    "email": "{{ user.email }}",
+    "department": "{{ user.department }}"
+  },
+  "device": {
+    "hostname": "{{ device.hostname }}",
+    "ipAddress": "{{ device.ip_address }}",
+    "osVersion": "{{ device.os_version }}"
+  },
+  "message": "User {{ user.username }} logged in from {{ device.hostname }}"
+}
+```
+
+This ensures that the same user, device, timestamp, and event type are used consistently throughout the template, making the generated log more realistic and coherent.
+
 Example usage in an XML template:
 ```xml
+{%- set user = registry.get_random_user() -%}
+{%- set device = registry.get_random_device() -%}
+{%- set event_time = current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') -%}
+
 <Event>
-  <TimeCreated SystemTime="{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}" />
+  <TimeCreated SystemTime="{{ event_time }}" />
   <EventID>{{ random_int(1000, 9999) }}</EventID>
-  <Computer>{{ registry.get_random_device().hostname }}</Computer>
-  <IpAddress>{{ random_ip() }}</IpAddress>
+  <Computer>{{ device.hostname }}</Computer>
+  <IpAddress>{{ device.ip_address }}</IpAddress>
   <SourcePort>{{ random_port() }}</SourcePort>
-  <User>{{ registry.get_random_user().username }}</User>
+  <User>{{ user.username }}</User>
 </Event>
 ```
 

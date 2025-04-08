@@ -1,5 +1,11 @@
-<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">
-  <System>
+{%- set subject_user = registry.get_random_user() -%}
+{%- set target_user = registry.get_random_user() -%}
+{%- set source_device = registry.get_random_device() -%}
+{%- set event_time = timestamp -%}
+{%- set subject_sid = "S-1-5-21-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(1000, 9999) -%}
+{%- set target_sid = "S-1-5-21-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(1000, 9999) -%}
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <s>
     <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
     <EventID>{{ event_id }}</EventID>
     <Version>0</Version>
@@ -7,35 +13,35 @@
     <Task>12544</Task>
     <Opcode>0</Opcode>
     <Keywords>0x8020000000000000</Keywords>
-    <TimeCreated SystemTime="{{ timestamp }}" />
-    <EventRecordID>12345</EventRecordID>
+    <TimeCreated SystemTime="{{ event_time }}" />
+    <EventRecordID>{{ random_int(10000, 99999) }}</EventRecordID>
     <Correlation />
     <Execution ProcessID="{{ process_id }}" ThreadID="{{ thread_id }}" />
     <Channel>Security</Channel>
     <Computer>{{ hostname }}</Computer>
     <Security />
-  </System>
+  </s>
   <EventData>
-    <Data Name="SubjectUserSid">S-1-5-18</Data>
-    <Data Name="SubjectUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
+    <Data Name="SubjectUserSid">{{ subject_sid }}</Data>
+    <Data Name="SubjectUserName">{{ subject_user.username }}</Data>
     <Data Name="SubjectDomainName">{{ domain }}</Data>
-    <Data Name="SubjectLogonId">0x3e7</Data>
-    <Data Name="TargetUserSid">S-1-5-21-12345-12345-12345-12345</Data>
-    <Data Name="TargetUserName">{{ registry.get_random_user().username if registry.get_random_user() else "jsmith" }}</Data>
+    <Data Name="SubjectLogonId">0x{{ '%x' | format(random_int(100000, 999999)) }}</Data>
+    <Data Name="TargetUserSid">{{ target_sid }}</Data>
+    <Data Name="TargetUserName">{{ target_user.username }}</Data>
     <Data Name="TargetDomainName">{{ domain }}</Data>
-    <Data Name="TargetLogonId">0x4f8</Data>
+    <Data Name="TargetLogonId">0x{{ '%x' | format(random_int(100000, 999999)) }}</Data>
     <Data Name="LogonType">{{ logon_type }}</Data>
     <Data Name="LogonProcessName">Advapi</Data>
     <Data Name="AuthenticationPackageName">Negotiate</Data>
-    <Data Name="WorkstationName">{{ hostname }}</Data>
-    <Data Name="LogonGuid">{00000000-0000-0000-0000-000000000000}</Data>
+    <Data Name="WorkstationName">{{ source_device.hostname }}</Data>
+    <Data Name="LogonGuid">{{{ random_guid().upper() }}}</Data>
     <Data Name="TransmittedServices">-</Data>
     <Data Name="LmPackageName">-</Data>
     <Data Name="KeyLength">0</Data>
-    <Data Name="ProcessId">0x4</Data>
+    <Data Name="ProcessId">0x{{ '%x' | format(random_int(1, 9999)) }}</Data>
     <Data Name="ProcessName">C:\Windows\System32\svchost.exe</Data>
-    <Data Name="IpAddress">{{ registry.get_random_device().ip_address if registry.get_random_device() else random_private_ip() }}</Data>
-    <Data Name="IpPort">58742</Data>
+    <Data Name="IpAddress">{{ source_device.ip_address }}</Data>
+    <Data Name="IpPort">{{ random_port() }}</Data>
     <Data Name="ImpersonationLevel">%%1833</Data>
     <Data Name="RestrictedAdminMode">-</Data>
     <Data Name="TargetOutboundUserName">-</Data>
