@@ -443,6 +443,35 @@ Logforge provides a rich set of template functions to generate random synthetic 
 - `random_private_ip([subnet])`: Generate a random private IP address
   - Optionally specify a subnet name or CIDR notation (e.g., `random_private_ip('office')` or `random_private_ip('10.0.0.0/24')`)
   - Subnets can be configured in config.yaml (see "Configuring Internal Networks" below)
+
+### Configuring Internal Networks
+
+You can define custom internal network ranges in your configuration file to use for IP address generation. This is useful for creating realistic internal IP addresses that match your organization's network structure.
+
+```yaml
+# Network ranges configuration for internal IP address generation
+network_ranges:
+  # Using CIDR notation (recommended)
+  - cidr: "10.1.0.0/16"
+    name: "office"
+  - cidr: "172.16.0.0/24"
+    name: "servers"
+  - cidr: "192.168.0.0/16"
+    name: "corporate"
+  
+  # Using start/end IP addresses
+  - start_ip: "10.2.0.0"
+    end_ip: "10.2.255.255"
+    name: "datacenter"
+```
+
+You can then reference these named ranges in your templates:
+
+```
+IP Address: {{ random_private_ip('office') }}
+```
+
+If no subnet is specified, LogForge will randomly choose one of your configured networks. If no custom networks are configured, it will use standard private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16).
 - `random_port(min_port=1024, max_port=65535)`: Generate a random port number
 - `random_mac()`: Generate a random MAC address
 

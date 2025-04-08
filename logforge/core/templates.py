@@ -27,7 +27,7 @@ class TemplateManager:
         Args:
             template_dirs: Directories to search for templates (defaults to 'templates' directory)
             network_ranges: List of tuples with start and end IP addresses for internal networks
-                           (defaults to standard private ranges if None)
+                           or CIDR notation strings (defaults to standard private ranges if None)
         """
         if template_dirs is None:
             # Default to 'templates' directory relative to this file
@@ -184,12 +184,26 @@ class TemplateManager:
             
             # Handle named subnets from configuration
             for range_info in self.network_ranges:
-                if len(range_info) > 2 and range_info[2] == subnet:
-                    start, end = range_info[0], range_info[1]
-                    start_int = int(ipaddress.IPv4Address(start))
-                    end_int = int(ipaddress.IPv4Address(end))
-                    ip_int = random.randint(start_int, end_int)
-                    return str(ipaddress.IPv4Address(ip_int))
+                # Check if this is a named range that matches our request
+                if len(range_info) > 1 and isinstance(range_info[-1], str) and range_info[-1] == subnet:
+                    # Check if it's a CIDR entry (tuple with just CIDR and name)
+                    if len(range_info) == 2 and '/' in range_info[0]:
+                        try:
+                            network = ipaddress.IPv4Network(range_info[0])
+                            start_int = int(network.network_address)
+                            end_int = int(network.broadcast_address)
+                            ip_int = random.randint(start_int, end_int)
+                            return str(ipaddress.IPv4Address(ip_int))
+                        except ValueError:
+                            logger.warning(f"Invalid CIDR in configured range: {range_info[0]}")
+                            continue
+                    # Otherwise it should be a start/end IP range
+                    else:
+                        start, end = range_info[0], range_info[1]
+                        start_int = int(ipaddress.IPv4Address(start))
+                        end_int = int(ipaddress.IPv4Address(end))
+                        ip_int = random.randint(start_int, end_int)
+                        return str(ipaddress.IPv4Address(ip_int))
         
         # If no specific subnet or subnet not found, choose from all configured ranges
         if not self.network_ranges:
@@ -200,13 +214,41 @@ class TemplateManager:
                 ('192.168.0.0', '192.168.255.255')     # 192.168.0.0/16
             ]
             start, end = random.choice(default_ranges)
+            start_int = int(ipaddress.IPv4Address(start))
+            end_int = int(ipaddress.IPv4Address(end))
         else:
             # Choose a random range from the configured ones
             range_choice = random.choice(self.network_ranges)
-            start, end = range_choice[0], range_choice[1]
-        
-        start_int = int(ipaddress.IPv4Address(start))
-        end_int = int(ipaddress.IPv4Address(end))
+            
+            # Handle CIDR notation in configured ranges
+            if len(range_choice) == 1 and '/' in range_choice[0]:
+                try:
+                    network = ipaddress.IPv4Network(range_choice[0])
+                    start_int = int(network.network_address)
+                    end_int = int(network.broadcast_address)
+                except ValueError:
+                    logger.warning(f"Invalid CIDR in configured range: {range_choice[0]}, using default range")
+                    # Fallback to a default range
+                    start, end = '10.0.0.0', '10.255.255.255'
+                    start_int = int(ipaddress.IPv4Address(start))
+                    end_int = int(ipaddress.IPv4Address(end))
+            elif len(range_choice) >= 2 and '/' in range_choice[0] and isinstance(range_choice[1], str) and not range_choice[1].count('.') == 3:
+                # This is a CIDR with a name
+                try:
+                    network = ipaddress.IPv4Network(range_choice[0])
+                    start_int = int(network.network_address)
+                    end_int = int(network.broadcast_address)
+                except ValueError:
+                    logger.warning(f"Invalid CIDR in configured range: {range_choice[0]}, using default range")
+                    # Fallback to a default range
+                    start, end = '10.0.0.0', '10.255.255.255'
+                    start_int = int(ipaddress.IPv4Address(start))
+                    end_int = int(ipaddress.IPv4Address(end))
+            else:
+                # Standard start/end IP range
+                start, end = range_choice[0], range_choice[1]
+                start_int = int(ipaddress.IPv4Address(start))
+                end_int = int(ipaddress.IPv4Address(end))
         
         ip_int = random.randint(start_int, end_int)
         return str(ipaddress.IPv4Address(ip_int))

@@ -115,6 +115,24 @@ def setup_engine(config: dict) -> Engine:
     if 'network_ranges' in config:
         network_ranges = []
         for range_config in config.get('network_ranges', []):
+            # Handle CIDR notation
+            cidr = range_config.get('cidr')
+            if cidr:
+                try:
+                    # Validate CIDR
+                    network = ipaddress.IPv4Network(cidr)
+                    name = range_config.get('name')
+                    
+                    # Add to network ranges - we'll pass the CIDR string directly
+                    if name:
+                        network_ranges.append((cidr, name))
+                    else:
+                        network_ranges.append((cidr,))
+                except ValueError as e:
+                    click.echo(f"Invalid CIDR notation in network range: {e}", err=True)
+                continue
+                
+            # Handle start/end IP notation
             start_ip = range_config.get('start_ip')
             end_ip = range_config.get('end_ip')
             name = range_config.get('name')
