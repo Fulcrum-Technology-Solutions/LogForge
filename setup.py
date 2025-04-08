@@ -19,7 +19,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "logforge=synth_logs.cli:main",
+            "logforge=logforge.cli:main",
         ],
     },
     python_requires=">=3.8",

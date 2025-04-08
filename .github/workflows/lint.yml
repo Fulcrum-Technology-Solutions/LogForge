@@ -28,18 +28,18 @@ jobs:
     - name: Run flake8
       run: |
         # Use a simpler linting rule set for now - just check for syntax errors
-        flake8 --select=E9,F63,F7,F82 synth_logs tests
+        flake8 --select=E9,F63,F7,F82 logforge tests
     
     # Simplified linting - just run flake8 for basic checks
     # Add these back when you need more strict formatting checks
     # - name: Run Black
     #  run: |
-    #    black --check synth_logs tests
+    #    black --check logforge tests
     #
     # - name: Run isort
     #  run: |
-    #    isort --check-only --profile black synth_logs tests
+    #    isort --check-only --profile black logforge tests
     #
     # - name: Run mypy
     #  run: |
-    #    mypy synth_logs
+    #    mypy logforge

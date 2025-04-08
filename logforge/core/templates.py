@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional, List, Tuple
 import jinja2
 import yaml
 
-from synth_logs.core.registry import EntityRegistry
+from logforge.core.registry import EntityRegistry
 
 logger = logging.getLogger(__name__)
 

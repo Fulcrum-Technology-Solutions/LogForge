@@ -5,10 +5,10 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "synth_logs",
+        "logforge",
     ],
     entry_points={
-        "synth_logs.generators": [
+        "logforge.generators": [
             "example_generator=example_generator.generator:ExampleGenerator",
         ],
     },

@@ -3,9 +3,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from synth_logs.core.engine import Engine, LogGenerator, TemplateBasedGenerator
-from synth_logs.core.registry import EntityRegistry, User, Device
-from synth_logs.outputs.base import OutputAdapter
+from logforge.core.engine import Engine, LogGenerator, TemplateBasedGenerator
+from logforge.core.registry import EntityRegistry, User, Device
+from logforge.outputs.base import OutputAdapter
 
 
 class MockGenerator(LogGenerator):

@@ -7,7 +7,7 @@ import yaml
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
-from synth_logs.cli import cli, load_config
+from logforge.cli import cli, load_config
 
 
 @pytest.fixture
@@ -43,8 +43,8 @@ def test_load_config(config_file):
     assert len(config['outputs']) == 1
 
 
-@patch('synth_logs.cli.setup_engine')
-@patch('synth_logs.cli.click.echo')
+@patch('logforge.cli.setup_engine')
+@patch('logforge.cli.click.echo')
 def test_list_generators(mock_echo, mock_setup_engine, config_file):
     """Test list_generators command."""
     # Mock engine

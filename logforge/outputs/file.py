@@ -4,9 +4,9 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Optional, TextIO, Dict
+from typing import Optional, TextIO, Dict, Any
 
-from synth_logs.outputs.base import OutputAdapter
+from logforge.outputs.base import OutputAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -167,12 +167,13 @@ class FileAdapter(OutputAdapter):
             self.current_hour = current_hour
             self._rotate_file(data_source, file_extension)
         
-    def send_with_extension(self, log_entry: str, file_extension: str = None) -> bool:
+    def send_with_extension(self, log_entry: str, file_extension: str = None, metadata: Dict[str, Any] = None) -> bool:
         """Send a log entry to the file with specific file extension.
         
         Args:
             log_entry: The log entry to send
             file_extension: The file extension to use for the output file
+            metadata: Optional metadata from the template
             
         Returns:
             True if the log entry was successfully sent, False otherwise

@@ -12,7 +12,7 @@ outputs: []
 # File output example:
 # - type: file
 #   name: file_output
-#   file_path: "logs/synth_logs.json"
+#   file_path: "logs/logforge.json"
 #   max_size: 10485760  # 10MB
 #   backup_count: 5
 #   hourly_rotation: true

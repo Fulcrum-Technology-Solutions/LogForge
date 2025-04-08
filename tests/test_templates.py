@@ -1,6 +1,6 @@
 """Basic tests for templates module."""
 
-from synth_logs.core.templates import TemplateManager
+from logforge.core.templates import TemplateManager
 
 
 def test_template_manager_init():

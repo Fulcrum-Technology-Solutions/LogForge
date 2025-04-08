@@ -172,7 +172,7 @@ You can configure the following output types:
 outputs:
   - type: file
     name: file_output
-    file_path: "logs/synth_logs.json"
+    file_path: "logs/logforge.json"
     hourly_rotation: true
     data_source_field: "generator"
 ```
@@ -240,12 +240,12 @@ By default, log files are organized with:
 Example:
 ```
 logs/
-  ├── windows_security_login_success_20250329_14_synth_logs.xml
-  ├── windows_security_login_success_20250329_15_synth_logs.xml
-  ├── windows_system_service_start_20250329_14_synth_logs.xml
-  ├── windows_system_service_start_20250329_15_synth_logs.xml
-  ├── paloalto_firewall_traffic_20250329_14_synth_logs.json
-  └── paloalto_firewall_traffic_20250329_15_synth_logs.json
+  ├── windows_security_login_success_20250329_14_logforge.xml
+  ├── windows_security_login_success_20250329_15_logforge.xml
+  ├── windows_system_service_start_20250329_14_logforge.xml
+  ├── windows_system_service_start_20250329_15_logforge.xml
+  ├── paloalto_firewall_traffic_20250329_14_logforge.json
+  └── paloalto_firewall_traffic_20250329_15_logforge.json
 ```
 
 ### HTTP Output with Authentication
@@ -380,7 +380,7 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     entry_points={
-        "synth_logs.generators": [
+        "logforge.generators": [
             "custom_generator=my_plugin.generators:CustomGenerator",
         ],
     },

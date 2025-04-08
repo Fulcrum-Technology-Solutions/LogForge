@@ -29,9 +29,9 @@ my_custom_generators/
 Create a class that inherits from `LogGenerator` and implements the required methods:
 
 ```python
-from synth_logs.core.engine import LogGenerator
-from synth_logs.core.registry import EntityRegistry
-from synth_logs.core.templates import TemplateManager
+from logforge.core.engine import LogGenerator
+from logforge.core.registry import EntityRegistry
+from logforge.core.templates import TemplateManager
 
 class MyCustomGenerator(LogGenerator):
     def __init__(self):
@@ -163,10 +163,10 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "synth_logs",
+        "logforge",
     ],
     entry_points={
-        "synth_logs.generators": [
+        "logforge.generators": [
             "my_custom_generator=my_generators.my_generator:MyCustomGenerator",
         ],
     },

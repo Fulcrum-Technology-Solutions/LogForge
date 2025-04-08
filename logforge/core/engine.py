@@ -10,10 +10,10 @@ import threading
 import time
 from typing import Dict, List, Set, Type, Optional, Any
 
-from synth_logs.core.registry import EntityRegistry
-from synth_logs.core.scheduler import Scheduler
-from synth_logs.core.templates import TemplateManager
-from synth_logs.outputs.base import OutputAdapter
+from logforge.core.registry import EntityRegistry
+from logforge.core.scheduler import Scheduler
+from logforge.core.templates import TemplateManager
+from logforge.outputs.base import OutputAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class Engine:
         # First, discover packages (this is for backward compatibility)
         try:
             # Python 3.10+ way
-            for entry_point in importlib.metadata.entry_points(group='synth_logs.packages'):
+            for entry_point in importlib.metadata.entry_points(group='logforge.packages'):
                 logger.info(f"Loading package: {entry_point.name}")
                 try:
                     register_func = entry_point.load()
@@ -198,7 +198,7 @@ class Engine:
                     logger.error(f"Failed to load package {entry_point.name}: {e}")
         except TypeError:
             # Python 3.9 and earlier way
-            for entry_point in importlib.metadata.entry_points().get('synth_logs.packages', []):
+            for entry_point in importlib.metadata.entry_points().get('logforge.packages', []):
                 logger.info(f"Loading package: {entry_point.name}")
                 try:
                     register_func = entry_point.load()
@@ -356,11 +356,11 @@ class Engine:
         # First discover code-based generators from entry points
         try:
             # Python 3.10+ way
-            for entry_point in importlib.metadata.entry_points(group='synth_logs.generators'):
+            for entry_point in importlib.metadata.entry_points(group='logforge.generators'):
                 self._load_generator_from_entry_point(entry_point)
         except TypeError:
             # Python 3.9 and earlier way
-            for entry_point in importlib.metadata.entry_points().get('synth_logs.generators', []):
+            for entry_point in importlib.metadata.entry_points().get('logforge.generators', []):
                 self._load_generator_from_entry_point(entry_point)
         
         # Then discover template-based generators

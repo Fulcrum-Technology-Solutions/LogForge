@@ -7,9 +7,9 @@ import random
 import yaml
 from typing import Dict, Any, List
 
-from synth_logs.core.engine import LogGenerator
-from synth_logs.core.registry import EntityRegistry
-from synth_logs.core.templates import TemplateManager
+from logforge.core.engine import LogGenerator
+from logforge.core.registry import EntityRegistry
+from logforge.core.templates import TemplateManager
 
 logger = logging.getLogger(__name__)
 

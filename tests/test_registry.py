@@ -1,7 +1,7 @@
 """Basic tests for entity registry."""
 
 import pytest
-from synth_logs.core.registry import EntityRegistry, User, Device, Service
+from logforge.core.registry import EntityRegistry, User, Device, Service
 
 
 def test_user_creation():

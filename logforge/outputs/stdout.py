@@ -4,7 +4,7 @@ import logging
 import sys
 from typing import TextIO
 
-from synth_logs.outputs.base import OutputAdapter
+from logforge.outputs.base import OutputAdapter
 
 logger = logging.getLogger(__name__)
 

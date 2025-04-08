@@ -10,10 +10,10 @@ from typing import List, Optional
 import click
 import yaml
 
-from synth_logs.core.engine import Engine
-from synth_logs.outputs.stdout import StdoutAdapter
-from synth_logs.outputs.file import FileAdapter
-from synth_logs.outputs.http import HttpAdapter
+from logforge.core.engine import Engine
+from logforge.outputs.stdout import StdoutAdapter
+from logforge.outputs.file import FileAdapter
+from logforge.outputs.http import HttpAdapter
 
 
 def configure_logging(verbose: bool):
@@ -62,8 +62,8 @@ def configure_logging(verbose: bool):
     # Error messages from the application itself should only go to the log file
     root_logger.addHandler(console_handler)
     
-    # Set all loggers for synth_logs modules to not propagate to the console handler
-    for logger_name in ['synth_logs', 'synth_logs.core', 'synth_logs.outputs', 'synth_logs.core.templates']:
+    # Set all loggers for logforge modules to not propagate to the console handler
+    for logger_name in ['logforge', 'logforge.core', 'logforge.outputs', 'logforge.core.templates']:
         module_logger = logging.getLogger(logger_name)
         module_logger.propagate = False
         module_logger.addHandler(file_handler)
@@ -153,7 +153,7 @@ def setup_engine(config: dict) -> Engine:
             default_output = {
                 "type": "file",
                 "name": "default_file_output",
-                "file_path": "logs/synth_logs.json",
+                "file_path": "logs/logforge.json",
                 "hourly_rotation": True,
                 "data_source_field": "generator"
             }
@@ -228,7 +228,7 @@ def setup_engine(config: dict) -> Engine:
             click.echo(f"Missing name for time pattern", err=True)
             continue
             
-        from synth_logs.core.scheduler import TimePattern, DayOfWeek
+        from logforge.core.scheduler import TimePattern, DayOfWeek
         
         # Convert day names to DayOfWeek enum values
         days_of_week = None
@@ -426,7 +426,7 @@ WantedBy=multi-user.target
 @click.pass_context
 def configure(ctx, config, entities):
     """Interactive configuration tool for the log generator."""
-    from synth_logs.core.templates import TemplateManager
+    from logforge.core.templates import TemplateManager
     
     # Load the current configuration
     config_data = load_config(config)
@@ -910,7 +910,7 @@ def configure_file_output():
     click.echo("")
     
     name = click.prompt("Output name", default="file_output")
-    file_path = click.prompt("File path", default="logs/synth_logs.json")
+    file_path = click.prompt("File path", default="logs/logforge.json")
     max_size = click.prompt("Max file size in bytes (0 for no limit)", default=0, type=int)
     backup_count = click.prompt("Number of backup files to keep", default=5, type=int)
     hourly_rotation = click.confirm("Enable hourly rotation?", default=True)

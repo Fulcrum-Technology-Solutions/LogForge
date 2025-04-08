@@ -31,11 +31,11 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest --cov=synth_logs tests/
+        pytest --cov=logforge tests/
     
     - name: Generate coverage report
       run: |
-        pytest --cov=synth_logs --cov-report=xml tests/
+        pytest --cov=logforge --cov-report=xml tests/
     
     # Disable Codecov upload until you have a Codecov account set up
     # - name: Upload coverage to Codecov

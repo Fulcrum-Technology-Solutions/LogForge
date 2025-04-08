@@ -30,13 +30,13 @@ pytest
 To run with coverage:
 
 ```bash
-pytest --cov=synth_logs tests/
+pytest --cov=logforge tests/
 ```
 
 To generate a coverage report:
 
 ```bash
-pytest --cov=synth_logs --cov-report=html tests/
+pytest --cov=logforge --cov-report=html tests/
 ```
 
 ## Test Configuration

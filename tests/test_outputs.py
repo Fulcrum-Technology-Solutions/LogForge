@@ -5,9 +5,9 @@ import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 
-from synth_logs.outputs.stdout import StdoutAdapter
-from synth_logs.outputs.file import FileAdapter
-from synth_logs.outputs.http import HttpAdapter
+from logforge.outputs.stdout import StdoutAdapter
+from logforge.outputs.file import FileAdapter
+from logforge.outputs.http import HttpAdapter
 
 
 def test_stdout_adapter():

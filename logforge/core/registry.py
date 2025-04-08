@@ -52,6 +52,7 @@ class Device:
     os_type: Optional[str] = None
     os_version: Optional[str] = None
     owner: Optional[str] = None
+    device_type: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.
@@ -213,6 +214,19 @@ class EntityRegistry:
                 
             # Load devices
             for device_data in data.get('devices', []):
+                # Add default IP and MAC if not present
+                if 'ip_address' not in device_data:
+                    # Generate a random private IP
+                    import random
+                    ip_parts = [10, random.randint(0, 255), random.randint(0, 255), random.randint(1, 254)]
+                    device_data['ip_address'] = '.'.join(str(part) for part in ip_parts)
+                    
+                if 'mac_address' not in device_data:
+                    # Generate a random MAC address
+                    import random
+                    mac = [random.randint(0x00, 0xff) for _ in range(6)]
+                    device_data['mac_address'] = ':'.join([f'{x:02x}' for x in mac])
+                
                 self.add_device(Device(**device_data))
                 
             # Load services

@@ -3,7 +3,7 @@
 import datetime
 import pytest
 from unittest.mock import patch, MagicMock
-from synth_logs.core.scheduler import Scheduler, TimePattern, DayOfWeek
+from logforge.core.scheduler import Scheduler, TimePattern, DayOfWeek
 
 
 def test_time_pattern_creation():
