@@ -1,7 +1,7 @@
 vendor: SentinelOne
 product: EDR
-data_source: SentinelOne EDR Events
-description: SentinelOne EDR Eventss
+data_source: SentinelOne Channel Activities
+description: SentinelOne Channel Activities
 format: JSON
 frequency: low
 
