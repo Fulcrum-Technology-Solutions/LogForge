@@ -2,7 +2,7 @@ vendor: Microsoft
 product: Windows
 data_source: Security Login Success
 description: Windows Security successful login events (EventID 4624)
-format: JSON
+format: XML
 frequency: high
 
 # Generator settings for template-based generators

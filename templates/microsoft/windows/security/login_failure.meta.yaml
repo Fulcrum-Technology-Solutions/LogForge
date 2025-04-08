@@ -2,7 +2,7 @@ vendor: Microsoft
 product: Windows
 data_source: Security Login Failure
 description: Windows Security failed login events (EventID 4625)
-format: JSON
+format: XML
 frequency: medium
 
 # Generator settings for template-based generators

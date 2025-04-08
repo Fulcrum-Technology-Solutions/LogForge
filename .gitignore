@@ -25,6 +25,9 @@ venv/
 env/
 ENV/
 
+# LogForge App Logs
+app_logs/
+
 # Logs
 logs/
 *.log

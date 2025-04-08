@@ -169,7 +169,7 @@ class HttpAdapter(OutputAdapter):
         for attempt in range(self.retry_count + 1):
             try:
                 # Keep operation details at debug level
-                logger.debug(f"Sending log to {self.url} with format {data['format']} (attempt {attempt+1}/{self.retry_count+1})")
+                logger.debug(f"Sending log to {self.url} with format {data['logforge_metadata']['format']} (attempt {attempt+1}/{self.retry_count+1})")
                 
                 response = self.session.request(
                     method=self.method,
@@ -190,7 +190,7 @@ class HttpAdapter(OutputAdapter):
                 if self.sent_count % 100 == 1:  # Log 1st, 101st, 201st, etc.
                     logger.info(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
                 else:
-                    logger.debug(f"Successfully sent log with format {data['format']} (status: {response.status_code})")
+                    logger.debug(f"Successfully sent log with format {data['logforge_metadata']['format']} (status: {response.status_code})")
                     
                 return True
                 
