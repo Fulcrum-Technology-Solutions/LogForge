@@ -15,7 +15,6 @@ setup(
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
-            "freezegun>=1.2.0",
         ],
     },
     entry_points={
