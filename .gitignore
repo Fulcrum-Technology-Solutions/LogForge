@@ -39,3 +39,4 @@ logs/
 # Local configuration
 .env
 .env.locals
+local/
