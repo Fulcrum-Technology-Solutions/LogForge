@@ -126,62 +126,8 @@ class HttpAdapter(OutputAdapter):
         Returns:
             True if the log entry was successfully sent, False otherwise
         """
-        # Always wrap the raw event text in a JSON field called "event"
-        data = {'event': log_entry}
-        
-        # Try to send the request with retries
-        for attempt in range(self.retry_count + 1):
-            try:
-                # Keep operation details at debug level
-                logger.debug(f"Sending log to {self.url} (attempt {attempt+1}/{self.retry_count+1})")
-                
-                response = self.session.request(
-                    method=self.method,
-                    url=self.url,
-                    json=data,
-                    headers=self.headers,
-                    timeout=self.timeout,
-                    verify=self.verify_ssl
-                )
-                
-                response.raise_for_status()  # Raise an exception for HTTP errors
-                
-                # Update success metrics
-                self.sent_count += 1
-                self.last_success_time = time.time()
-                
-                # Only log occasionally for successful operations to reduce log volume
-                if self.sent_count % 100 == 1:  # Log 1st, 101st, 201st, etc.
-                    logger.info(f"Successfully sent log to {self.url} (status: {response.status_code}, total sent: {self.sent_count})")
-                else:
-                    logger.debug(f"Successfully sent log (status: {response.status_code})")
-                    
-                return True
-                
-            except requests.exceptions.ConnectionError as e:
-                # Network problems, DNS failure, refused connection
-                error_msg = f"Connection error to {self.url}: {e}"
-                if not self._handle_request_error(e, attempt, error_msg):
-                    return False
-                
-            except requests.exceptions.Timeout as e:
-                # Timeout errors
-                error_msg = f"Timeout connecting to {self.url} (timeout={self.timeout}s): {e}"
-                if not self._handle_request_error(e, attempt, error_msg):
-                    return False
-                
-            except requests.exceptions.HTTPError as e:
-                # HTTP errors (4xx, 5xx responses)
-                status_code = e.response.status_code if hasattr(e, 'response') and e.response else 'unknown'
-                error_msg = f"HTTP error {status_code} from {self.url}: {e}"
-                if not self._handle_request_error(e, attempt, error_msg):
-                    return False
-                
-            except requests.exceptions.RequestException as e:
-                # Catch-all for any other request-related errors
-                error_msg = f"Error sending log to {self.url}: {e}"
-                if not self._handle_request_error(e, attempt, error_msg):
-                    return False
+        # Delegate to send_with_extension with no extension or metadata
+        return self.send_with_extension(log_entry, None, None)
                     
     def send_with_extension(self, log_entry: str, file_extension: str = None, metadata: Dict[str, Any] = None) -> bool:
         """Send a log entry with a specific file extension.
@@ -197,6 +143,7 @@ class HttpAdapter(OutputAdapter):
         # Create JSON object with event content
         data = {
             'event': log_entry,
+            'logforge_metadata': {}
         }
         
         # Add format info from metadata or file extension
@@ -206,8 +153,17 @@ class HttpAdapter(OutputAdapter):
         elif file_extension:
             format_value = file_extension.lstrip('.')
             
-        data['format'] = format_value
+        data['logforge_metadata']['format'] = format_value
         logger.debug(f"Setting format to '{format_value}' for log entry")
+        
+        # Add vendor, product, data_source from metadata
+        if metadata:
+            if 'vendor' in metadata:
+                data['logforge_metadata']['vendor'] = metadata['vendor']
+            if 'product' in metadata:
+                data['logforge_metadata']['product'] = metadata['product']
+            if 'data_source' in metadata:
+                data['logforge_metadata']['data_source'] = metadata['data_source']
         
         # Try to send the request with retries
         for attempt in range(self.retry_count + 1):

@@ -1,0 +1,17 @@
+vendor: Microsoft
+product: Azure Active Directory
+data_source: Authentication Event
+description: Azure Active Directory Authentication Event
+format: JSON
+frequency: low
+
+# Generator settings for template-based generators
+is_generator: true
+base_frequency: 0.05
+time_patterns:
+  - business_hours
+  - night_hours
+  - weekend
+business_hours_multiplier: 1.2
+night_hours_multiplier: 0.3
+weekend_multiplier: 0.5
