@@ -40,7 +40,7 @@ class FileAdapter(OutputAdapter):
             # Looks like this might be a full path, split into directory and filename
             self.file_path = output_dir  # Store the original for backward compatibility
             output_dir = os.path.dirname(output_dir)
-            filename_with_ext = os.path.basename(output_dir)
+            filename_with_ext = os.path.basename(self.file_path)  # Use self.file_path instead
             base_filename, ext = os.path.splitext(filename_with_ext)
             if ext:
                 default_extension = ext

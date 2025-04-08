@@ -23,13 +23,30 @@ def test_file_adapter():
     # Just test the initialization, without actually writing to a file
     adapter = FileAdapter(
         name="test_file",
-        file_path="test.log" 
+        output_dir="logs",
+        base_filename="test",
+        default_extension=".log"
     )
     assert adapter.name == "test_file"
-    assert adapter.file_path == "test.log"
+    assert adapter.output_dir == "logs"
+    assert adapter.base_filename == "test"
+    assert adapter.default_extension == ".log"
+    assert adapter.file_path == "logs/test.log"  # Verify combined path
+    
+    # Test backward compatibility with file_path
+    adapter_legacy = FileAdapter(
+        name="legacy_test",
+        output_dir="old_logs/test.log"  # Will be interpreted as file_path
+    )
+    assert adapter_legacy.name == "legacy_test"
+    assert adapter_legacy.output_dir == "old_logs"
+    assert adapter_legacy.base_filename == "test"
+    assert adapter_legacy.default_extension == ".log"
+    assert adapter_legacy.file_path == "old_logs/test.log"
     
     # Just make sure close doesn't raise an exception
     adapter.close()
+    adapter_legacy.close()
 
 @patch("requests.request")
 def test_http_adapter(mock_request):
