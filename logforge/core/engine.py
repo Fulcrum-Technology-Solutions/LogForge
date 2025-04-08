@@ -327,16 +327,39 @@ class Engine:
             if hasattr(generator, 'metadata') and generator.metadata:
                 metadata = generator.metadata
             
+            # Add generator name to metadata for file routing
+            if metadata and hasattr(generator, 'name'):
+                metadata = dict(metadata)  # Make a copy to avoid modifying original
+                metadata['generator'] = generator.name
+            
         for output in self.outputs:
             try:
                 # Log which output we're sending to (debug level only)
                 logger.debug(f"Sending log entry to output: {output.name} (type: {output.__class__.__name__})")
                 
+                # Determine proper file extension based on format in metadata 
+                # This ensures file matches actual content format, not template extension
+                output_extension = file_extension
+                if metadata and 'format' in metadata:
+                    format_value = metadata['format'].lower()
+                    # Map format to appropriate extension
+                    format_to_ext = {
+                        'json': '.json',
+                        'xml': '.xml',
+                        'text': '.txt',
+                        'csv': '.csv',
+                        'cef': '.log',
+                        'leef': '.log',
+                        'kv': '.log'
+                    }
+                    if format_value in format_to_ext:
+                        output_extension = format_to_ext[format_value]
+                
                 # Pass the file extension and metadata to the output if it supports it
                 result = False
                 if hasattr(output, 'send_with_extension'):
                     logger.debug(f"Output {output.name} supports send_with_extension method")
-                    result = output.send_with_extension(log_entry, file_extension, metadata)
+                    result = output.send_with_extension(log_entry, output_extension, metadata)
                 else:
                     logger.debug(f"Output {output.name} using standard send method")
                     result = output.send(log_entry)

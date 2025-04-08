@@ -2,6 +2,14 @@
 
 LogForge is a Python-based application for generating synthetic but realistic event logs from various products including Windows Event Log, Palo Alto Firewall, and Azure AD authentication. It's designed to help security professionals, developers, and testers create realistic log data for testing, development, and training purposes.
 
+## Recent Changes
+
+**Version 1.1.0 (April 2025)**
+- **File Output Module Fix**: Improved generator name extraction from metadata
+- **Format Accuracy**: Fixed file extensions to correctly represent log format
+- **Data Source Handling**: Better identification of data sources from generator metadata
+- **File Naming**: More consistent handling of file naming and sanitization
+
 LogForge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and LogForge will automatically generate realistic event logs.
 
 ## Features
@@ -234,7 +242,7 @@ logforge -v run --config config.yaml
 By default, log files are organized with:
 - Separate files per data source (based on the `data_source_field`)
 - Hourly rotation with timestamps in filenames
-- File extension matching the source template (XML files output XML, JSON files output JSON)
+- File extension matching the actual log format (not the template extension)
 - Format: `{data_source}_{YYYYMMDD_HH}_{filename}.{extension}`
 
 Example:
@@ -247,6 +255,8 @@ logs/
   ├── paloalto_firewall_traffic_20250329_14_logforge.json
   └── paloalto_firewall_traffic_20250329_15_logforge.json
 ```
+
+> **Note**: In version 1.1.0, the file output module was significantly improved to correctly use metadata from the generator for file naming and data source identification. Previous versions may have used incorrect extensions or failed to properly separate logs by data source.
 
 ### HTTP Output with Authentication
 

@@ -64,6 +64,9 @@ class FileAdapter(OutputAdapter):
         # Use a default name if data source is not provided
         effective_data_source = data_source if data_source else "default"
         
+        # Sanitize data source name to avoid path issues
+        effective_data_source = ''.join(c if c.isalnum() or c == '_' else '_' for c in effective_data_source)
+        
         logger.debug(f"Getting file path for data source: {effective_data_source}")
         
         # Determine the file extension to use
@@ -74,7 +77,12 @@ class FileAdapter(OutputAdapter):
             output_filename = f"{base_name_without_ext}{file_extension}"
         else:
             # Use the extension from the configured file path
-            output_filename = base_name
+            # But use .log as default extension if none is specified
+            _, configured_ext = os.path.splitext(base_name)
+            if not configured_ext:
+                output_filename = f"{base_name}.log"
+            else:
+                output_filename = base_name
             
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
@@ -180,9 +188,26 @@ class FileAdapter(OutputAdapter):
         """
         logger.debug(f"Sending log entry to file with extension {file_extension}, length: {len(log_entry)}")
         
-        # Extract data source if configured
-        data_source = self._extract_data_source(log_entry)
-        logger.debug(f"Extracted data source: {data_source}")
+        # First try to extract data source from metadata if provided
+        data_source = None
+        if metadata:
+            # Try to get consistent generator name from metadata
+            if 'generator' in metadata:
+                data_source = metadata['generator']
+                logger.debug(f"Using generator name from metadata: {data_source}")
+            # Construct from vendor/product/data_source if available
+            elif all(key in metadata for key in ['vendor', 'product', 'data_source']):
+                vendor = metadata.get('vendor', '').lower()
+                product = metadata.get('product', '').lower() 
+                source = metadata.get('data_source', '').lower().replace(' ', '_')
+                data_source = f"{vendor}_{product}_{source}"
+                data_source = ''.join(c if c.isalnum() or c == '_' else '_' for c in data_source)
+                logger.debug(f"Constructed generator name from metadata: {data_source}")
+        
+        # Only try to extract from log entry if we couldn't get it from metadata
+        if not data_source:
+            data_source = self._extract_data_source(log_entry)
+            logger.debug(f"Extracted data source from log content: {data_source}")
         
         key = data_source or '_default'
         
