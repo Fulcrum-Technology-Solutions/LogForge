@@ -48,12 +48,13 @@ class FileAdapter(OutputAdapter):
         if self.hourly_rotation:
             self.current_hour = datetime.now().hour
         
-    def _get_file_path(self, data_source: str = None, file_extension: str = None) -> str:
+    def _get_file_path(self, data_source: str = None, file_extension: str = None, metadata: Dict[str, Any] = None) -> str:
         """Get the file path for the given data source and current time.
         
         Args:
             data_source: The data source name
             file_extension: The file extension to use (e.g., '.xml', '.json')
+            metadata: Optional metadata from the template
             
         Returns:
             The file path
@@ -61,28 +62,79 @@ class FileAdapter(OutputAdapter):
         base_dir = os.path.dirname(os.path.abspath(self.file_path))
         base_name = os.path.basename(self.file_path)
         
-        # Use a default name if data source is not provided
-        effective_data_source = data_source if data_source else "default"
+        # Get folder structure from metadata if available, otherwise use data_source
+        folder_structure = ""
+        template_path = None
+        if metadata and 'template_path' in metadata:
+            template_path = metadata['template_path']
+            # Extract folder structure from template path (templates/folder1/folder2/folder3/file.j2)
+            # We want to create folder1_folder2_folder3
+            parts = template_path.split('/')
+            # Skip 'templates' and the actual filename
+            if len(parts) > 2:
+                # Check if parts[0] is 'templates', if so skip it
+                start_idx = 1 if parts[0] == 'templates' else 0
+                # Don't include the file part
+                relevant_parts = parts[start_idx:-1]
+                folder_structure = '_'.join(relevant_parts).lower()
+        
+        # Use the folder structure if available, otherwise fall back to data_source
+        if folder_structure:
+            effective_data_source = folder_structure
+        else:
+            effective_data_source = data_source if data_source else "default"
         
         # Sanitize data source name to avoid path issues
         effective_data_source = ''.join(c if c.isalnum() or c == '_' else '_' for c in effective_data_source)
         
-        logger.debug(f"Getting file path for data source: {effective_data_source}")
+        logger.debug(f"Getting file path for data source: {effective_data_source} from template: {template_path}")
         
         # Determine the file extension to use
+        configured_base_name = os.path.splitext(base_name)[0]
+        
+        # Priority for file extension:
+        # 1. Explicitly provided extension from config
+        # 2. Extension from original template file path 
+        # 3. Format specified in metadata
+        # 4. Default to .log
+        
         if file_extension:
-            # Use the provided extension
-            # Strip any extension from the base_name
-            base_name_without_ext = os.path.splitext(base_name)[0]
-            output_filename = f"{base_name_without_ext}{file_extension}"
-        else:
-            # Use the extension from the configured file path
-            # But use .log as default extension if none is specified
-            _, configured_ext = os.path.splitext(base_name)
-            if not configured_ext:
-                output_filename = f"{base_name}.log"
+            # 1. Use the provided extension
+            output_filename = f"{configured_base_name}{file_extension}"
+        elif template_path and os.path.splitext(template_path)[1]:
+            # 2. Use the extension from the template file (but not .j2)
+            template_ext = os.path.splitext(template_path)[1]
+            if template_ext == '.j2':
+                # If template is .j2, try to look at the extension before .j2
+                template_base = os.path.splitext(os.path.splitext(template_path)[0])[0]
+                template_real_ext = os.path.splitext(os.path.splitext(template_path)[0])[1]
+                if template_real_ext:
+                    output_filename = f"{configured_base_name}{template_real_ext}"
+                else:
+                    # Default to .log if can't determine
+                    output_filename = f"{configured_base_name}.log"
             else:
-                output_filename = base_name
+                output_filename = f"{configured_base_name}{template_ext}"
+        elif metadata and 'format' in metadata:
+            # 3. Use format from metadata
+            format_value = metadata['format'].lower()
+            format_to_ext = {
+                'json': '.json',
+                'xml': '.xml',
+                'text': '.txt',
+                'csv': '.csv',
+                'cef': '.log',
+                'leef': '.log',
+                'kv': '.log',
+                'syslog': '.log'
+            }
+            if format_value in format_to_ext:
+                output_filename = f"{configured_base_name}{format_to_ext[format_value]}"
+            else:
+                output_filename = f"{configured_base_name}.log"
+        else:
+            # 4. Default to .log
+            output_filename = f"{configured_base_name}.log"
             
         # Add timestamp to filename if using hourly rotation
         if self.hourly_rotation:
@@ -91,14 +143,15 @@ class FileAdapter(OutputAdapter):
         else:
             return os.path.join(base_dir, f"{effective_data_source}_{output_filename}")
     
-    def _open_file(self, data_source: str = None, file_extension: str = None):
+    def _open_file(self, data_source: str = None, file_extension: str = None, metadata: Dict[str, Any] = None):
         """Open the file for writing.
         
         Args:
             data_source: The data source name
             file_extension: The file extension to use
+            metadata: Optional metadata from the template
         """
-        file_path = self._get_file_path(data_source, file_extension)
+        file_path = self._get_file_path(data_source, file_extension, metadata)
         key = data_source or '_default'
         if file_extension:
             key = f"{key}_{file_extension}"
@@ -117,18 +170,19 @@ class FileAdapter(OutputAdapter):
             logger.error(f"Error opening file {file_path}: {e}")
             self.files[key] = None
             
-    def _rotate_file(self, data_source: str = None, file_extension: str = None):
+    def _rotate_file(self, data_source: str = None, file_extension: str = None, metadata: Dict[str, Any] = None):
         """Rotate the log file if it exceeds the maximum size.
         
         Args:
             data_source: The data source name
             file_extension: The file extension to use
+            metadata: Optional metadata from the template
         """
         key = data_source or '_default'
         if file_extension:
             key = f"{key}_{file_extension}"
             
-        file_path = self._get_file_path(data_source, file_extension)
+        file_path = self._get_file_path(data_source, file_extension, metadata)
         
         # Close the current file
         if key in self.files and self.files[key]:
@@ -157,15 +211,16 @@ class FileAdapter(OutputAdapter):
                 os.rename(file_path, dst)
             
         # Open a new file
-        self._open_file(data_source, file_extension)
+        self._open_file(data_source, file_extension, metadata)
         self.current_sizes[key] = 0
     
-    def _check_hour_rotation(self, data_source: str = None, file_extension: str = None):
+    def _check_hour_rotation(self, data_source: str = None, file_extension: str = None, metadata: Dict[str, Any] = None):
         """Check if hourly rotation is needed and perform it if necessary.
         
         Args:
             data_source: The data source name
             file_extension: The file extension to use
+            metadata: Optional metadata from the template
         """
         if not self.hourly_rotation:
             return
@@ -173,7 +228,7 @@ class FileAdapter(OutputAdapter):
         current_hour = datetime.now().hour
         if current_hour != self.current_hour:
             self.current_hour = current_hour
-            self._rotate_file(data_source, file_extension)
+            self._rotate_file(data_source, file_extension, metadata)
         
     def send_with_extension(self, log_entry: str, file_extension: str = None, metadata: Dict[str, Any] = None) -> bool:
         """Send a log entry to the file with specific file extension.
@@ -205,7 +260,7 @@ class FileAdapter(OutputAdapter):
                 logger.debug(f"Constructed generator name from metadata: {data_source}")
         
         # Only try to extract from log entry if we couldn't get it from metadata
-        if not data_source:
+        if not data_source and self.data_source_field:
             data_source = self._extract_data_source(log_entry)
             logger.debug(f"Extracted data source from log content: {data_source}")
         
@@ -216,16 +271,16 @@ class FileAdapter(OutputAdapter):
             key = f"{key}_{file_extension}"
         
         # Check for hourly rotation
-        self._check_hour_rotation(data_source, file_extension)
+        self._check_hour_rotation(data_source, file_extension, metadata)
         
         # Get the file path for debugging purposes
-        file_path = self._get_file_path(data_source, file_extension)
+        file_path = self._get_file_path(data_source, file_extension, metadata)
         logger.debug(f"Using file path: {file_path}")
         
         # Open file if not already open
         if key not in self.files or not self.files[key]:
             logger.info(f"Opening file: {file_path}")
-            self._open_file(data_source, file_extension)
+            self._open_file(data_source, file_extension, metadata)
         
         if not self.files.get(key):
             logger.error(f"File not open for data source {data_source}")
@@ -246,7 +301,7 @@ class FileAdapter(OutputAdapter):
                 
                 # Rotate if necessary
                 if self.current_sizes[key] > self.max_size:
-                    self._rotate_file(data_source, file_extension)
+                    self._rotate_file(data_source, file_extension, metadata)
                     
             return True
             

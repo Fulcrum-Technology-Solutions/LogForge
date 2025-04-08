@@ -9,6 +9,7 @@ LogForge is a Python-based application for generating synthetic but realistic ev
 - **Format Accuracy**: Fixed file extensions to correctly represent log format
 - **Data Source Handling**: Better identification of data sources from generator metadata
 - **File Naming**: More consistent handling of file naming and sanitization
+- **Folder-Based Naming**: File names now use template folder structure for organization
 
 LogForge uses a template-based approach that doesn't require any coding to add new log types. Simply create template files in the appropriate format (XML, JSON, etc.) and metadata files describing their attributes, and LogForge will automatically generate realistic event logs.
 
@@ -180,9 +181,11 @@ You can configure the following output types:
 outputs:
   - type: file
     name: file_output
-    file_path: "logs/logforge.json"
-    hourly_rotation: true
-    data_source_field: "generator"
+    file_path: "logs/logforge.log"  # Base filename (extension will be determined by log format)
+    hourly_rotation: true           # Creates timestamped files (YYYYMMDD_HH)
+    max_size: 10485760              # Optional: 10MB maximum file size before rotation
+    backup_count: 5                 # Optional: Keep 5 backup files when rotating by size
+    data_source_field: "generator"  # Optional: Field to use as fallback if folder structure can't be determined
 ```
 
 #### HTTP Output
@@ -240,23 +243,31 @@ logforge -v run --config config.yaml
 ### Log File Output
 
 By default, log files are organized with:
-- Separate files per data source (based on the `data_source_field`)
+- Separate files per template folder structure (automatically extracted from template paths)
 - Hourly rotation with timestamps in filenames
 - File extension matching the actual log format (not the template extension)
-- Format: `{data_source}_{YYYYMMDD_HH}_{filename}.{extension}`
+- Format: `{folder1_folder2_folder3}_{YYYYMMDD_HH}_{filename}.{extension}`
 
 Example:
 ```
 logs/
-  ├── windows_security_login_success_20250329_14_logforge.xml
-  ├── windows_security_login_success_20250329_15_logforge.xml
-  ├── windows_system_service_start_20250329_14_logforge.xml
-  ├── windows_system_service_start_20250329_15_logforge.xml
-  ├── paloalto_firewall_traffic_20250329_14_logforge.json
-  └── paloalto_firewall_traffic_20250329_15_logforge.json
+  ├── microsoft_windows_security_20250329_14_logforge.xml
+  ├── microsoft_windows_security_20250329_15_logforge.xml
+  ├── microsoft_windows_system_20250329_14_logforge.xml
+  ├── microsoft_windows_system_20250329_15_logforge.xml
+  ├── paloalto_traffic_20250329_14_logforge.json
+  └── paloalto_traffic_20250329_15_logforge.json
 ```
 
-> **Note**: In version 1.1.0, the file output module was significantly improved to correctly use metadata from the generator for file naming and data source identification. Previous versions may have used incorrect extensions or failed to properly separate logs by data source.
+The naming is derived from the template folder structure:
+- `templates/microsoft/windows/security/login_success.j2` → `microsoft_windows_security_TIMESTAMP_filename.ext`
+- `templates/paloalto/traffic/traffic.j2` → `paloalto_traffic_TIMESTAMP_filename.ext`
+
+> **Note**: In version 1.1.0, the file output module was significantly improved to use the folder structure of templates for file naming to ensure consistent organization. The file extension is determined by:
+> 1. Explicitly provided extension in config
+> 2. Original template file extension
+> 3. Format specified in template metadata
+> 4. Default (.log)
 
 ### HTTP Output with Authentication
 

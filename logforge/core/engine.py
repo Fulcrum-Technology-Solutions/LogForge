@@ -325,12 +325,16 @@ class Engine:
             
             # Get metadata if available
             if hasattr(generator, 'metadata') and generator.metadata:
-                metadata = generator.metadata
-            
+                metadata = dict(generator.metadata)  # Make a copy to avoid modifying original
+            else:
+                metadata = {}
+                
             # Add generator name to metadata for file routing
-            if metadata and hasattr(generator, 'name'):
-                metadata = dict(metadata)  # Make a copy to avoid modifying original
+            if hasattr(generator, 'name'):
                 metadata['generator'] = generator.name
+                
+            # Add template path to metadata for folder-based routing
+            metadata['template_path'] = generator.template_path
             
         for output in self.outputs:
             try:
@@ -350,7 +354,8 @@ class Engine:
                         'csv': '.csv',
                         'cef': '.log',
                         'leef': '.log',
-                        'kv': '.log'
+                        'kv': '.log',
+                        'syslog': '.log'
                     }
                     if format_value in format_to_ext:
                         output_extension = format_to_ext[format_value]
