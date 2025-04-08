@@ -266,13 +266,20 @@ def cli(ctx, verbose):
 @cli.command()
 @click.option('--config', '-c', required=True, type=click.Path(exists=True), 
               help='Path to configuration file')
+@click.option('--entities', '-e', type=click.Path(exists=True),
+              help='Path to entities file (overrides the one in config)')
 @click.pass_context
-def run(ctx, config):
+def run(ctx, config, entities):
     """Run the log generator."""
     click.echo("Starting synthetic log generator...")
     
     # Load configuration
     config_data = load_config(config)
+    
+    # Override entities file if specified
+    if entities:
+        config_data['entity_registry'] = entities
+        click.echo(f"Using custom entities file: {entities}")
     
     # Set up the engine
     engine = setup_engine(config_data)
@@ -311,11 +318,18 @@ def run(ctx, config):
 @cli.command()
 @click.option('--config', '-c', required=True, type=click.Path(exists=True), 
               help='Path to configuration file')
+@click.option('--entities', '-e', type=click.Path(exists=True),
+              help='Path to entities file (overrides the one in config)')
 @click.pass_context
-def list_generators(ctx, config):
+def list_generators(ctx, config, entities):
     """List available log generators."""
     # Load configuration
     config_data = load_config(config)
+    
+    # Override entities file if specified
+    if entities:
+        config_data['entity_registry'] = entities
+        click.echo(f"Using custom entities file: {entities}")
     
     # Set up the engine
     engine = setup_engine(config_data)
@@ -335,14 +349,21 @@ def list_generators(ctx, config):
               help='Path to output the service file')
 @click.option('--config', '-c', required=True, type=click.Path(), 
               help='Path to configuration file (absolute path)')
+@click.option('--entities', '-e', type=click.Path(), 
+              help='Path to entities file (absolute path, overrides the one in config)')
 @click.option('--description', '-d', default='Synthetic Log Generator Service',
               help='Description for the service')
 @click.pass_context
-def create_service(ctx, user, output, config, description):
+def create_service(ctx, user, output, config, entities, description):
     """Create a systemd service file for the log generator."""
     # Validate config path
     if not os.path.isabs(config):
         click.echo("Config path must be absolute for systemd service", err=True)
+        sys.exit(1)
+    
+    # Validate entities path if provided
+    if entities and not os.path.isabs(entities):
+        click.echo("Entities path must be absolute for systemd service", err=True)
         sys.exit(1)
     
     # Get the executable path
@@ -351,6 +372,11 @@ def create_service(ctx, user, output, config, description):
     # Get the script path
     script_path = os.path.abspath(sys.argv[0])
     
+    # Create the command with optional entities parameter
+    cmd = f"{executable} {script_path} run --config {config}"
+    if entities:
+        cmd += f" --entities {entities}"
+    
     # Create the service file content
     service_content = f"""[Unit]
 Description={description}
@@ -358,7 +384,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart={executable} {script_path} run --config {config}
+ExecStart={cmd}
 Restart=on-failure
 """
 
@@ -391,13 +417,20 @@ WantedBy=multi-user.target
 @cli.command()
 @click.option('--config', '-c', required=True, type=click.Path(exists=True), 
               help='Path to configuration file')
+@click.option('--entities', '-e', type=click.Path(exists=True),
+              help='Path to entities file (overrides the one in config)')
 @click.pass_context
-def configure(ctx, config):
+def configure(ctx, config, entities):
     """Interactive configuration tool for the log generator."""
     from synth_logs.core.templates import TemplateManager
     
     # Load the current configuration
     config_data = load_config(config)
+    
+    # Override entities file if specified
+    if entities:
+        config_data['entity_registry'] = entities
+        click.echo(f"Using custom entities file: {entities}")
     
     # Create a template manager
     template_manager = TemplateManager()

@@ -270,6 +270,7 @@ class TemplateManager:
         if timestamp is None:
             dt = datetime.datetime.now()
         else:
+            # Use fromtimestamp which uses local time, not UTC
             dt = datetime.datetime.fromtimestamp(timestamp)
             
         # Apply offset if provided

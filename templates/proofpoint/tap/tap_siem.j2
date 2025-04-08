@@ -1,0 +1,61 @@
+{
+  "spamScore": {{ random_int(0, 100) }},
+  "phishScore": {{ random_int(0, 100) }},
+  "threatsInfoMap": [
+    {
+      "threatID": "{{ random_guid() }}",
+      "threatStatus": "{{ ['active', 'cleared', 'expired'] | random }}",
+      "classification": "{{ ['toad', 'phish', 'malware', 'spam'] | random }}",
+      "detectionType": "{{ ['NONE', 'URL_REPUTATION', 'ATTACHMENT', 'DYNAMIC'] | random }}",
+      "threatUrl": "https://threatinsight.proofpoint.com/{{ random_guid() }}/threat/email/{{ random_guid() }}",
+      "threatTime": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.000Z') }}",
+      "threat": "{{ registry.get_random_user().email }}:{{ random_string(30) }}",
+      "campaignID": {% if random_int(1, 10) > 3 %}"{{ random_guid() }}"{% else %}null{% endif %},
+      "actors": [],
+      "threatType": "{{ ['messageText', 'url', 'attachment'] | random }}"
+    }
+  ],
+  "messageTime": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.000Z') }}",
+  "impostorScore": {{ random_int(0, 100) / 10.0 }},
+  "malwareScore": {{ random_int(0, 100) }},
+  "cluster": "{{ registry.get_random_device().hostname }}_hosted",
+  "subject": "{{ ['You\'ve got a money request', 'Your account has been locked', 'Verify your information', 'Important security update'] | random }}",
+  "quarantineFolder": "{{ ['Malware', 'Phish', 'Spam', 'Admin'] | random }}",
+  "quarantineRule": "inbound_{{ ['malware', 'phish', 'spam'] | random }}",
+  "policyRoutes": [
+    "{{ registry.get_random_device().hostname }}_Email_Domains", 
+    "default_inbound", 
+    "{{ ['o365_mail', 'gsuite_mail'] | random }}", 
+    "{{ registry.get_random_service().name }}_recipients"
+  ],
+  "modulesRun": ["access", "av", "dkimv", "spf", "spam", "dmarc", "pdr", "urldefense"],
+  "messageSize": {{ random_int(5000, 200000) }},
+  "headerFrom": "\"{{ registry.get_random_user().email }}\" <{{ registry.get_random_user().email }}>",
+  "headerReplyTo": {% if random_int(1, 10) > 7 %}"{{ registry.get_random_user().email }}"{% else %}null{% endif %},
+  "fromAddress": ["{{ registry.get_random_user().email }}"],
+  "ccAddresses": [],
+  "replyToAddress": [],
+  "toAddresses": ["{{ registry.get_random_user().email }}"],
+  "xmailer": {% if random_int(1, 10) > 6 %}"{{ ['Outlook', 'Mozilla Thunderbird', 'Apple Mail'] | random }}"{% else %}null{% endif %},
+  "messageParts": [
+    {
+      "disposition": "inline",
+      "sha256": "{{ random_string(64, 'abcdef0123456789') }}",
+      "md5": "{{ random_string(32, 'abcdef0123456789') }}",
+      "filename": "text.html",
+      "sandboxStatus": null,
+      "oContentType": "text/html",
+      "contentType": "text/html"
+    }
+  ],
+  "completelyRewritten": {{ [true, false] | random }},
+  "id": "{{ random_string(8, 'abcdef0123456789') }}-{{ random_string(4, 'abcdef0123456789') }}-{{ random_string(4, 'abcdef0123456789') }}-{{ random_string(4, 'abcdef0123456789') }}-{{ random_string(12, 'abcdef0123456789') }}",
+  "QID": "{{ random_string(8, 'abcdef0123456789') }}-{{ random_int(1, 9) }}",
+  "GUID": "{{ random_string(30) }}",
+  "sender": "bounces+srs={{ random_string(5) }}=vk@{{ registry.get_random_device().hostname }}.{{ ['com', 'org', 'net', 'edu'] | random }}",
+  "recipient": ["{{ registry.get_random_user().email }}"],
+  "senderIP": "{{ random_ip() }}",
+  "messageID": "<{{ random_string(1, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') }}{{ random_int(1, 99) }}.{{ random_int(10, 99) }}.{{ random_int(10000, 99999) }}.{{ random_string(8, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}@{{ random_string(10) }}>",
+  "eventType": "messagesBlocked",
+  "eventTime": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}"
+}
