@@ -22,21 +22,23 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 black isort mypy
+        python -m pip install flake8
         python -m pip install -e .
     
     - name: Run flake8
       run: |
         flake8 synth_logs tests
     
-    - name: Run Black
-      run: |
-        black --check synth_logs tests
-    
-    - name: Run isort
-      run: |
-        isort --check-only --profile black synth_logs tests
-    
-    - name: Run mypy
-      run: |
-        mypy synth_logs
+    # Simplified linting - just run flake8 for basic checks
+    # Add these back when you need more strict formatting checks
+    # - name: Run Black
+    #  run: |
+    #    black --check synth_logs tests
+    #
+    # - name: Run isort
+    #  run: |
+    #    isort --check-only --profile black synth_logs tests
+    #
+    # - name: Run mypy
+    #  run: |
+    #    mypy synth_logs

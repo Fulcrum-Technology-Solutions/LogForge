@@ -26,7 +26,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install .[dev]
+        python -m pip install pytest pytest-cov
+        python -m pip install -e .
     
     - name: Run tests
       run: |
@@ -36,9 +37,10 @@ jobs:
       run: |
         pytest --cov=synth_logs --cov-report=xml tests/
     
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        fail_ci_if_error: false
+    # Disable Codecov upload until you have a Codecov account set up
+    # - name: Upload coverage to Codecov
+    #  uses: codecov/codecov-action@v3
+    #  with:
+    #    file: ./coverage.xml
+    #    flags: unittests
+    #    fail_ci_if_error: false
