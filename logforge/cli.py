@@ -645,9 +645,9 @@ def add_generator_menu(templates, active_generators):
         click.echo(click.style("=" * 50, fg='green'))
         click.echo("")
         
-        # Display available vendors
+        # Display available vendors (sorted alphabetically)
         click.echo(click.style("Available Vendors:", fg='blue', bold=True))
-        vendors = list(templates.keys())
+        vendors = sorted(list(templates.keys()))
         for i, vendor in enumerate(vendors, 1):
             click.echo(f"{i}. {vendor}")
             
@@ -689,9 +689,9 @@ def select_product_menu(vendor, products, active_generators):
         click.echo(click.style("=" * 50, fg='green'))
         click.echo("")
         
-        # Display available products
+        # Display available products (sorted alphabetically)
         click.echo(click.style("Available Products:", fg='blue', bold=True))
-        product_names = list(products.keys())
+        product_names = sorted(list(products.keys()))
         for i, product_name in enumerate(product_names, 1):
             click.echo(f"{i}. {product_name}")
             
@@ -761,9 +761,11 @@ def select_template_menu(vendor, product, templates, active_generators):
             
             template_to_generator[template['path']] = generator_name
         
-        # Display available templates
+        # Display available templates (sorted by data source name)
         click.echo(click.style("Available Templates:", fg='blue', bold=True))
-        for i, template in enumerate(templates, 1):
+        # Sort templates by data_source for consistent ordering
+        sorted_templates = sorted(templates, key=lambda t: t.get('data_source', '').lower())
+        for i, template in enumerate(sorted_templates, 1):
             generator_name = template_to_generator.get(template['path'], '')
             
             # Check if the generator is already active
