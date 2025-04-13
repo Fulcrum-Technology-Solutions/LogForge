@@ -32,22 +32,43 @@ The following functions are available in templates and can be used either as fun
 ### Entity Registry Functions
 - `registry.get_random_user()`: Get a random user from the entity registry
 - `registry.get_random_device()`: Get a random device from the entity registry
+  - Access standard fields: `device.hostname`, `device.fqdn`, `device.ip_address`, etc.
+  - Access custom fields: `device.custom_asset_tag`, `device.custom_location`, etc.
+  - Check if a field exists: `{% if device.custom_field is defined %}`
 - `registry.get_random_service()`: Get a random service from the entity registry
+- `registry.get_device(hostname)`: Get a specific device by hostname
+- `registry.get_user(username)`: Get a specific user by username
+- `registry.get_service(name)`: Get a specific service by name
 
 ## Usage Example
 
 These functions can be used directly in templates:
 
 ```xml
+{%- set device = registry.get_random_device() -%}
+{%- set user = registry.get_random_user() -%}
 <Event>
   <TimeCreated SystemTime="{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}" />
   <EventID>{{ random_int(1000, 9999) }}</EventID>
-  <Computer>{{ registry.get_random_device().hostname }}</Computer>
-  <IpAddress>{{ random_ip() }}</IpAddress>
+  <Computer>{{ device.hostname }}</Computer>
+  <FQDN>{{ device.fqdn | default(device.hostname) }}</FQDN>
+  <IpAddress>{{ device.ip_address }}</IpAddress>
   <SourcePort>{{ random_port() }}</SourcePort>
-  <User>{{ registry.get_random_user().username }}</User>
+  <User>{{ user.username }}</User>
+  <Department>{{ user.department }}</Department>
+  {% if device.custom_asset_tag is defined %}
+  <AssetTag>{{ device.custom_asset_tag }}</AssetTag>
+  {% endif %}
+  {% if device.custom_location is defined %}
+  <Location>{{ device.custom_location }}</Location>
+  {% endif %}
 </Event>
 ```
+
+This example demonstrates:
+- Using `set` to store entities in variables for consistent references
+- Accessing the device's FQDN with a fallback value
+- Conditionally including custom fields when they exist
 
 ## Template Metadata
 
@@ -57,4 +78,10 @@ Each template can have a corresponding `.meta.yaml` file that provides metadata 
 - Generation frequency settings
 - Default context values
 - Parameter definitions
+
+See the example in `windows/security/login_success.meta.yaml` for a complete metadata file that demonstrates:
+- Basic template information (vendor, product, format)
+- Generation frequency settings with time-based multipliers
+- Documentation for registry entity access including FQDN and custom fields
+- Parameter documentation and examples
 
