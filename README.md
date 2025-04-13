@@ -4,6 +4,12 @@ LogForge is a Python-based application for generating synthetic but realistic ev
 
 ## Recent Changes
 
+**Version 1.2.0 (April 2025)**
+- **Enhanced Device Entities**: Added FQDN field to devices and extended device attributes
+- **Custom Device Fields**: Support for custom fields with `custom_` prefix
+- **Template Access**: Improved Jinja2 access to device fields including custom fields
+- **Registry Functions**: Better device field access in templates with conditional support
+
 **Version 1.1.0 (April 2025)**
 - **File Output Module Fix**: Improved generator name extraction from metadata
 - **Format Accuracy**: Fixed file extensions to correctly represent log format
@@ -153,13 +159,21 @@ users:
     organization: "Technology Services"
 
 devices:
-  - hostname: "WS001"
-    ip_address: "192.168.1.100"
-    mac_address: "00:1A:2B:3C:4D:5E"
-    device_id: "D1001"
-    os_type: "Windows 10"
-    os_version: "10.0.19044"
-    owner: "jsmith"
+  - hostname: "WS001"                      # Required: Hostname
+    fqdn: "WS001.example.com"              # Optional: Fully Qualified Domain Name
+    ip_address: "192.168.1.100"            # Required: IP address
+    mac_address: "00:1A:2B:3C:4D:5E"       # Required: MAC address
+    device_id: "D1001"                     # Required: Unique device ID
+    os_type: "Windows 10"                  # Optional: OS type
+    os_version: "10.0.19044"               # Optional: OS version
+    owner: "jsmith"                        # Required: Owner username
+    device_type: "workstation"             # Optional: Type of device (workstation, laptop, server)
+    model: "Dell OptiPlex 7090"            # Optional: Hardware model
+    department: "IT"                       # Optional: Department
+    status: "active"                       # Optional: Status (active, maintenance, etc.)
+    last_updated: "2025-03-01"             # Optional: Date of last update
+    custom_asset_tag: "IT-PC-7090-001"     # Optional: Any field with custom_ prefix
+    custom_purchase_date: "2024-12-15"     # Optional: Custom fields can store any information
 
 services:
   - name: "Web Server"
@@ -168,6 +182,27 @@ services:
     service_id: "S1001"
     description: "Internal company website"
     owner: "jsmith"
+```
+
+#### Custom Device Fields
+
+Any field prefixed with `custom_` can be added to device definitions to store organization-specific data. These fields are accessible in templates just like standard fields. For example:
+
+```yaml
+# In entities.yaml
+devices:
+  - hostname: "SRV001"
+    # ... standard fields ...
+    custom_location: "Rack 3, Data Center 1"
+    custom_warranty_expiry: "2027-01-15"
+```
+
+```jinja
+{# In a template #}
+{% set device = registry.get_random_device() %}
+{% if device.custom_location is defined %}
+Location: {{ device.custom_location }}
+{% endif %}
 ```
 
 You can create multiple entity files for different environments or scenarios.
@@ -484,7 +519,13 @@ If no subnet is specified, LogForge will randomly choose one of your configured 
 #### Entity Registry Functions
 - `registry.get_random_user()`: Get a random user from the entity registry
 - `registry.get_random_device()`: Get a random device from the entity registry
+  - Access standard fields like `device.hostname`, `device.fqdn`, `device.ip_address`, etc.
+  - Access custom fields with the same dot notation: `device.custom_asset_tag`, `device.custom_location`
+  - Check if a field exists with `{% if device.custom_field is defined %}`
 - `registry.get_random_service()`: Get a random service from the entity registry
+- `registry.get_device(hostname)`: Get a specific device by hostname
+- `registry.get_user(username)`: Get a specific user by username
+- `registry.get_service(name)`: Get a specific service by name
 
 ### Template Variable Reuse
 

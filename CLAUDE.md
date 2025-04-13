@@ -52,12 +52,18 @@ Example:
 
 ## Latest Features
 
-1. **File Output Improvements (v0.8.1)**
+1. **Enhanced Device Entities (v1.2.0)**
+   - Added FQDN field to devices
+   - Extended device attributes (model, department, status, etc.)
+   - Support for custom fields with `custom_` prefix
+   - Improved Jinja2 access to all device fields in templates
+
+2. **File Output Improvements (v1.1.0)**
    - Enhanced configuration with `output_dir`, `base_filename`, `default_extension`
    - File naming based on template folder structure
    - Intelligent extension handling
 
-2. **Template Variable Reuse (v0.8.2)**
+3. **Template Variable Reuse (v1.0.0)**
    - Consistent entity references using Jinja2 set statements
    - More coherent log entries with related fields
    - Improved template organization and readability
@@ -98,7 +104,13 @@ Example:
    - Add more specialized security product logs
    - Support for cloud service logs
 
-3. **Advanced Configuration**
-   - More granular control of output formats
-   - Enhanced entity relationships
+3. **Advanced Entity Features** ✓
+   - ✓ Extended device attributes (model, department, status)
+   - ✓ Support for organization-specific custom fields
+   - ✓ Enhanced template access to all entity fields
+   - Additional entity types (networks, applications)
+
+4. **Template Improvements**
+   - Variable inheritance between templates
+   - Entity relationship enforcement
    - Dynamic template modification
