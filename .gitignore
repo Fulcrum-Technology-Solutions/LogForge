@@ -32,6 +32,11 @@ app_logs/
 logs/
 *.log
 
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+
 # IDE
 .idea/
 .vscode/
