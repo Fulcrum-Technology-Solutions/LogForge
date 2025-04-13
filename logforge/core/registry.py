@@ -4,8 +4,9 @@ import json
 import logging
 import os
 import uuid
+import ipaddress
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Set, Any, Union
+from typing import Dict, List, Optional, Set, Any, Union, Tuple
 
 import yaml
 
@@ -49,18 +50,90 @@ class Device:
     ip_address: str
     mac_address: str
     device_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    fqdn: Optional[str] = None
     os_type: Optional[str] = None
     os_version: Optional[str] = None
+    os: Optional[str] = None
     owner: Optional[str] = None
     device_type: Optional[str] = None
+    model: Optional[str] = None
+    department: Optional[str] = None
+    status: Optional[str] = None
+    last_updated: Optional[str] = None
     
+    # This will hold any custom fields
+    _custom_fields: Dict[str, Any] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Process any additional fields after initialization."""
+        # If fqdn is not provided but hostname exists, default it based on a domain from the first device
+        if self.fqdn is None and self.hostname:
+            # Don't set a default FQDN - just leave it as None if not provided
+            pass
+            
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.
         
         Returns:
-            Dictionary representation of the device
+            Dictionary representation of the device including custom fields
         """
-        return asdict(self)
+        # Start with the standard fields
+        result = asdict(self)
+        
+        # Remove the internal _custom_fields from the result
+        result.pop('_custom_fields', None)
+        
+        # Add all custom fields to the result
+        result.update(self._custom_fields)
+        
+        return result
+        
+    def __setattr__(self, name: str, value: Any):
+        """Custom attribute setter to handle custom fields.
+        
+        Args:
+            name: The attribute name
+            value: The attribute value
+        """
+        if name.startswith('custom_'):
+            # Store in the custom fields dictionary
+            self._custom_fields[name] = value
+        else:
+            # Set as a regular attribute
+            super().__setattr__(name, value)
+    
+    def __getattr__(self, name: str) -> Any:
+        """Custom attribute getter to handle custom fields.
+        
+        This is called when the attribute is not found through normal attribute access.
+        It allows Jinja2 templates to access custom fields using dot notation.
+        
+        Args:
+            name: The attribute name
+            
+        Returns:
+            The attribute value if found in _custom_fields
+            
+        Raises:
+            AttributeError: If the attribute is not found in _custom_fields
+        """
+        if name.startswith('custom_') and name in self._custom_fields:
+            return self._custom_fields[name]
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        
+    # This magic method is needed for Jinja2 to check attribute existence with 'is defined'
+    def __contains__(self, key: str) -> bool:
+        """Check if an attribute exists.
+        
+        This allows Jinja2 to check if attributes exist using 'is defined'.
+        
+        Args:
+            key: The attribute name
+            
+        Returns:
+            True if the attribute exists, False otherwise
+        """
+        return (hasattr(self, key) and getattr(self, key) is not None) or key in self._custom_fields
 
 
 @dataclass
@@ -91,6 +164,7 @@ class EntityRegistry:
         self.users: Dict[str, User] = {}
         self.devices: Dict[str, Device] = {}
         self.services: Dict[str, Service] = {}
+        self.network_ranges: List[Tuple] = []
         
     def add_user(self, user: User):
         """Add a user to the registry.
@@ -184,6 +258,21 @@ class EntityRegistry:
             
         import random
         return random.choice(list(self.services.values()))
+    
+    def get_network_ranges(self) -> List[Tuple]:
+        """Get the network ranges.
+        
+        Returns:
+            List of network range tuples (either CIDR notation or start/end IPs)
+        """
+        if not self.network_ranges:
+            # Return default network ranges if none are configured
+            return [
+                ('10.0.0.0', '10.255.255.255'),       # 10.0.0.0/8
+                ('172.16.0.0', '172.31.255.255'),     # 172.16.0.0/12
+                ('192.168.0.0', '192.168.255.255')    # 192.168.0.0/16
+            ]
+        return self.network_ranges
         
     def load_from_file(self, file_path: str):
         """Load entities from a file.
@@ -207,6 +296,48 @@ class EntityRegistry:
             else:
                 logger.error(f"Unsupported file type: {file_ext}")
                 return
+            
+            # Load network ranges
+            network_ranges = []
+            for range_config in data.get('network_ranges', []):
+                # Handle CIDR notation
+                cidr = range_config.get('cidr')
+                if cidr:
+                    try:
+                        # Validate CIDR
+                        network = ipaddress.IPv4Network(cidr)
+                        name = range_config.get('name')
+                        
+                        # Add to network ranges - we'll pass the CIDR string directly
+                        if name:
+                            network_ranges.append((cidr, name))
+                        else:
+                            network_ranges.append((cidr,))
+                    except ValueError as e:
+                        logger.error(f"Invalid CIDR notation in network range: {e}")
+                    continue
+                    
+                # Handle start/end IP notation
+                start_ip = range_config.get('start_ip')
+                end_ip = range_config.get('end_ip')
+                name = range_config.get('name')
+                
+                if start_ip and end_ip:
+                    try:
+                        # Validate IP addresses
+                        ipaddress.IPv4Address(start_ip)
+                        ipaddress.IPv4Address(end_ip)
+                        
+                        # Add to network ranges
+                        if name:
+                            network_ranges.append((start_ip, end_ip, name))
+                        else:
+                            network_ranges.append((start_ip, end_ip))
+                    except ValueError as e:
+                        logger.error(f"Invalid IP address in network range: {e}")
+            
+            # Set network ranges in registry
+            self.network_ranges = network_ranges
                 
             # Load users
             for user_data in data.get('users', []):
@@ -227,13 +358,31 @@ class EntityRegistry:
                     mac = [random.randint(0x00, 0xff) for _ in range(6)]
                     device_data['mac_address'] = ':'.join([f'{x:02x}' for x in mac])
                 
-                self.add_device(Device(**device_data))
+                # Separate standard fields from custom fields
+                standard_fields = {}
+                custom_fields = {}
+                
+                for key, value in device_data.items():
+                    if key.startswith('custom_'):
+                        custom_fields[key] = value
+                    else:
+                        standard_fields[key] = value
+                
+                # Create the device with standard fields
+                device = Device(**standard_fields)
+                
+                # Add custom fields
+                for key, value in custom_fields.items():
+                    setattr(device, key, value)
+                
+                self.add_device(device)
                 
             # Load services
             for service_data in data.get('services', []):
                 self.add_service(Service(**service_data))
                 
-            logger.info(f"Loaded {len(data.get('users', []))} users, "
+            logger.info(f"Loaded {len(data.get('network_ranges', []))} network ranges, "
+                        f"{len(data.get('users', []))} users, "
                         f"{len(data.get('devices', []))} devices, and "
                         f"{len(data.get('services', []))} services from {file_path}")
                         
@@ -248,7 +397,22 @@ class EntityRegistry:
         """
         file_ext = os.path.splitext(file_path)[1].lower()
         
+        # Convert network ranges to a format suitable for serialization
+        network_ranges_data = []
+        for range_info in self.network_ranges:
+            if len(range_info) > 0 and '/' in range_info[0]:  # CIDR notation
+                entry = {'cidr': range_info[0]}
+                if len(range_info) > 1:  # Has a name
+                    entry['name'] = range_info[1]
+                network_ranges_data.append(entry)
+            elif len(range_info) >= 2:  # Start/end IP format
+                entry = {'start_ip': range_info[0], 'end_ip': range_info[1]}
+                if len(range_info) > 2:  # Has a name
+                    entry['name'] = range_info[2]
+                network_ranges_data.append(entry)
+        
         data = {
+            'network_ranges': network_ranges_data,
             'users': [user.to_dict() for user in self.users.values()],
             'devices': [device.to_dict() for device in self.devices.values()],
             'services': [service.to_dict() for service in self.services.values()],
@@ -265,7 +429,8 @@ class EntityRegistry:
                 logger.error(f"Unsupported file type: {file_ext}")
                 return
                 
-            logger.info(f"Saved {len(self.users)} users, {len(self.devices)} devices, "
+            logger.info(f"Saved {len(network_ranges_data)} network ranges, "
+                        f"{len(self.users)} users, {len(self.devices)} devices, "
                         f"and {len(self.services)} services to {file_path}")
                         
         except Exception as e:
