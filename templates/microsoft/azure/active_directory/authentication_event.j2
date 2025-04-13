@@ -1,16 +1,25 @@
+{%- set user = registry.get_random_user() -%}
+{%- set device = registry.get_random_device() -%}
+{%- set timestamp = current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') -%}
+{%- set correlation_id = random_guid() -%}
+{%- set session_id = random_guid() -%}
+{%- set tenant_id = random_guid() -%}
+{%- set app_id = random_guid() -%}
+{%- set user_id = random_guid() -%}
+{%- set ip_address = random_public_ip() -%}
 {
-    "Level": "{{ ['1', '2', '3','4'] | random }}",
-    "callerIpAddress": "{{ ['206.55.168.133', '10.10.10.10', '192.168.1.1'] | random }}",
+    "Level": "{{ random_int(1, 4) }}",
+    "callerIpAddress": "{{ ip_address }}",
     "category": "{{ ['SignInLogs', 'PasswordChangeLogs', 'UserActivityLogs'] | random }}",
-    "correlationId": "{{ ['z1b2c3-2019-4c59-bbaf-165f91b9e8fk', 'y1c3d4-1019-5c59-bbaf-265f92b9e8fj', 'x1d4e5-0019-6c59-bbaf-365f93b9e8fi','w1e5f6-9019-7c59-bbaf-465f94b9e8fh'] | random }}",
-    "durationMs": "{{  range(0, 1000) | random  }}",
-    "identity": "{{ registry.get_random_user().username if registry.get_random_user() else ["jsmith", "alee", "bjohnson", "mwilliams", "dthomas"] | random }}",
+    "correlationId": "{{ correlation_id }}",
+    "durationMs": "{{ random_int(0, 1000) }}",
+    "identity": "{{ user.username }}",
     "location": "US",
     "operationName": "{{ ['Sign-in activity', 'Password change', 'User registration'] | random }}",
     "operationVersion": "1.0",
     "properties": {
       "appDisplayName": "Windows Sign In",
-      "appId": "{{ ['h1x2v5-a06d-4817-b275-7a511988d93g', 'i2y3v4-b07d-4817-b275-8a416288d93h', 'j3z4v3-c08d-4817-b275-9a116938d93o','k4a5v2-d09d-4817-b275-0a216984d93p'] | random }}",
+      "appId": "{{ app_id }}",
       "appServicePrincipalId": "null",
       "appliedConditionalAccessPolicies": [
       ],
@@ -47,25 +56,25 @@
       "clientAppUsed": "Mobile Apps and Desktop clients",
       "clientCredentialType": "none",
       "conditionalAccessStatus": "notApplied",
-      "correlationId": "{{ ['z1b2c3-2019-4c59-bbaf-165f91b9e8fk', 'y1c3d4-1019-5c59-bbaf-265f92b9e8fj', 'x1d4e5-0019-6c59-bbaf-365f93b9e8fi','w1e5f6-9019-7c59-bbaf-465f94b9e8fh'] | random }}",
+      "correlationId": "{{ correlation_id }}",
       "createdDateTime": "{{ timestamp }}",
       "crossTenantAccessType": "none",
       "deviceDetail": {
-        "deviceId": "{{ registry.get_random_device().hostname if registry.get_random_device() else "WIN-" + random_string(8).upper() }}",
-          "displayName": "{{ hostname }}",
-          "operatingSystem": "Windows",
-          "isCompliant": "{{ [True, False] | random }}",
-          "isManaged": "{{ [True, False] | random }}",
-          "trustType": "Azure AD joined" 
+        "deviceId": "{{ device.device_id }}",
+        "displayName": "{{ device.hostname }}",
+        "operatingSystem": "{{ device.os_type }}",
+        "isCompliant": "{{ [true, false] | random }}",
+        "isManaged": "{{ [true, false] | random }}",
+        "trustType": "Azure AD joined" 
       },
-      "flaggedForReview": "{{ [True, False] | random }}",
-      "homeTenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
-      "id": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "flaggedForReview": "{{ [true, false] | random }}",
+      "homeTenantId": "{{ tenant_id }}",
+      "id": "{{ random_guid() }}",
       "incomingTokenType": "primaryRefreshToken",
-      "ipAddress": "{{ ['206.55.168.133', '10.10.10.10', '192.168.1.1'] | random }}",
-      "isInteractive": "{{ [True, False] | random }}",
-      "isTenantRestricted": "{{ [True, False] | random }}",
-      "isThroughGlobalSecureAccess": "{{ [True, False] | random }}",
+      "ipAddress": "{{ ip_address }}",
+      "isInteractive": "{{ [true, false] | random }}",
+      "isTenantRestricted": "{{ [true, false] | random }}",
+      "isThroughGlobalSecureAccess": "{{ [true, false] | random }}",
       "location": {
         "city": "Westminster",
         "countryOrRegion": "US",
@@ -79,16 +88,16 @@
       },
       "networkLocationDetails": [
       ],
-      "originalRequestId": "75b1-4164-a460-a7177d1d0400",
+      "originalRequestId": "{{ random_string(4) }}-{{ random_string(4) }}-{{ random_string(4) }}-{{ random_string(16) }}",
       "originalTransferMethod": "none",
       "privateLinkDetails": {
       },
-      "processingTimeInMilliseconds": "{{  range(0, 1000) | random  }}",
+      "processingTimeInMilliseconds": "{{ random_int(0, 1000) }}",
       "resourceDisplayName": "Windows Azure Active Directory",
       "resourceId": "00000002-0000-0000-c000-000000000000",
-      "resourceOwnerTenantId": "{{  ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
-      "resourceServicePrincipalId": "{{  ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
-      "resourceTenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}",
+      "resourceOwnerTenantId": "{{ tenant_id }}",
+      "resourceServicePrincipalId": "{{ random_guid() }}",
+      "resourceTenantId": "{{ tenant_id }}",
       "riskDetail": "none",
       "riskEventTypes": [
       ],
@@ -99,7 +108,7 @@
       "riskState": "none",
       "rngcStatus": "0",
       "servicePrincipalId": "",
-      "sessionId": "{{ random_guid() }}",
+      "sessionId": "{{ session_id }}",
       "sessionLifetimePolicies": [
       ],
       "signInTokenProtectionStatus": "none",
@@ -114,15 +123,15 @@
         "signInSessionStatus": "bound",
         "signInSessionStatusCode": "0"
       },
-      "uniqueTokenIdentifier": "s3iBGbF1kYKcXfR0EAA",
+      "uniqueTokenIdentifier": "{{ random_string(8) + random_string(8) }}",
       "userAgent": "Windows-AzureAD-Authentication-Provider/1.0",
-      "userDisplayName": "{{ username }}",
-      "userId": "110fcaa9-d6b0-4844-8a72-1e97f5058078",
-      "userPrincipalName": "{{ username }}",
+      "userDisplayName": "{{ user.full_name }}",
+      "userId": "{{ user_id }}",
+      "userPrincipalName": "{{ user.email }}",
       "userType": "Member"
      },
-  "resourceId": "/tenants/9459a--4e80-9f8c-5a91bdd/providers/Microsoft.aadiam",
+  "resourceId": "/tenants/{{ random_string(6) }}--4e80-9f8c-5a91bdd/providers/Microsoft.aadiam",
   "resultSignature": "None",
   "resultType": "0",
-  "tenantId": "{{ ['xb3ty5s-83a2-4e80-9f8c-00947364552a', 'xa1ab9s-83a2-4e80-9f8c-00947364552b'] | random }}"
-  }
+  "tenantId": "{{ tenant_id }}"
+}

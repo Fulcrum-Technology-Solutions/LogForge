@@ -1,6 +1,6 @@
 vendor: SentinelOne
-product: EDR
-data_source: SentinelOne Channel Activities
+product: Endpoint Security
+data_source: Activities
 description: SentinelOne Channel Activities
 format: JSON
 frequency: low
