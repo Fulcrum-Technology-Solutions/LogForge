@@ -1,0 +1,16 @@
+#!/bin/bash
+# Simple wrapper script to run logforge CLI
+
+# If python3 is available, use it, otherwise fall back to python
+if command -v python3 &>/dev/null; then
+    PYTHON_CMD="python3"
+else
+    PYTHON_CMD="python"
+fi
+
+# Get the directory where this script is located
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARENT_DIR="$(dirname "$DIR")"
+
+# Run the logforge CLI module
+$PYTHON_CMD -m logforge.cli "$@"
