@@ -1,13 +1,15 @@
-"""Basic tests for CLI functionality."""
+"""Tests for CLI functionality."""
 
 import os
 import tempfile
 import pytest
 import yaml
+import re
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
 from logforge.cli import cli, load_config
+from logforge import __version__
 
 
 @pytest.fixture
@@ -66,3 +68,11 @@ def test_list_generators(mock_echo, mock_setup_engine, config_file):
     
     # Verify output includes generators
     assert mock_echo.called
+    
+def test_version_flag():
+    """Test the --version flag."""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['--version'])
+    
+    assert result.exit_code == 0
+    assert re.search(f"version {__version__}", result.output)
