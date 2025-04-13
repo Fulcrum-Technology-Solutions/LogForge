@@ -27,6 +27,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest pytest-cov
+        # Install dependencies explicitly to ensure they're available
+        python -m pip install pyyaml jinja2 click requests
+        # Install the package in development mode
         python -m pip install -e .
     
     - name: Run tests

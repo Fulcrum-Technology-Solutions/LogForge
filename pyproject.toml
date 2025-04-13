@@ -17,6 +17,19 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "Click>=8.0.0",
+    "Jinja2>=3.0.0",
+    "PyYAML>=6.0",
+    "requests>=2.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "flake8>=6.0.0",
+]
 
 [tool.black]
 line-length = 100
