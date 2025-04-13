@@ -1,3 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logforge"
+version = "1.2.0"
+description = "Synthetic event log generator"
+readme = "README.md"
+authors = [
+    {name = "John Owen", email = "jowen@ftsc.com"}
+]
+requires-python = ">=3.8"
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
 [tool.black]
 line-length = 100
 target-version = ['py38']

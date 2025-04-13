@@ -63,7 +63,7 @@ Example:
    - File naming based on template folder structure
    - Intelligent extension handling
 
-3. **Template Variable Reuse (v1.0.0)**
+3. **Template Variable Reuse (v1.1.0)**
    - Consistent entity references using Jinja2 set statements
    - More coherent log entries with related fields
    - Improved template organization and readability

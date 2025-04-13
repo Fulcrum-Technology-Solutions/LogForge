@@ -293,6 +293,7 @@ def setup_engine(config: dict) -> Engine:
 
 
 @click.group()
+@click.version_option(None, '--version', '-V', message='LogForge version %(version)s')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
 @click.pass_context
 def cli(ctx, verbose):
@@ -310,7 +311,8 @@ def cli(ctx, verbose):
 @click.pass_context
 def run(ctx, config, entities):
     """Run the log generator."""
-    click.echo("Starting synthetic log generator...")
+    from logforge import __version__
+    click.echo(f"Starting LogForge v{__version__} synthetic log generator...")
     
     # Load configuration
     config_data = load_config(config)
@@ -491,8 +493,8 @@ def configure(ctx, config, entities):
     
     while True:
         click.clear()
-        click.echo(click.style("🪵 LogForge Configuration Menu", fg='green', bold=True))
-        click.echo(click.style("=" * 50, fg='green'))
+        click.echo(click.style(f"🪵 LogForge Configuration Menu (v{__import__('logforge').__version__})", fg='green', bold=True))
+        click.echo(click.style("=" * 60, fg='green'))
         click.echo("")
         
         # Display active generators
