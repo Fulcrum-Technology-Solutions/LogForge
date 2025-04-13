@@ -48,6 +48,23 @@ class TemplateManager:
         self.template_dirs = template_dirs
         self.environment = self._create_environment()
         self.metadata_cache = {}
+    
+    def set_network_ranges(self, network_ranges: List[Tuple[str, str]]):
+        """Set the network ranges to use for random_private_ip.
+        
+        Args:
+            network_ranges: List of tuples with start and end IP addresses for internal networks
+                           or CIDR notation strings
+        """
+        if network_ranges:
+            self.network_ranges = network_ranges
+        else:
+            # Default private IP ranges if none provided
+            self.network_ranges = [
+                ('10.0.0.0', '10.255.255.255'),        # 10.0.0.0/8
+                ('172.16.0.0', '172.31.255.255'),      # 172.16.0.0/12
+                ('192.168.0.0', '192.168.255.255')     # 192.168.0.0/16
+            ]
         
     def _create_environment(self) -> jinja2.Environment:
         """Create a Jinja2 environment.

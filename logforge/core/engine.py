@@ -166,6 +166,8 @@ class Engine:
         Args:
             network_ranges: Optional list of tuples with start and end IP addresses for internal networks
                            Each tuple can optionally include a name as a third element
+                           Note: This parameter is kept for backward compatibility but is now ignored
+                           as network ranges are loaded from the entity registry.
         """
         self.generators: Dict[str, LogGenerator] = {}
         self.outputs: List[OutputAdapter] = []
@@ -173,12 +175,11 @@ class Engine:
         self.scheduler = Scheduler()
         self.running = False
         self.threads: List[threading.Thread] = []
-        self.network_ranges = network_ranges
         
-        # Initialize template manager
+        # Initialize template manager (network_ranges will be updated after registry is loaded)
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         template_dir = os.path.join(base_dir, 'templates')
-        self.template_manager = TemplateManager([template_dir], network_ranges)
+        self.template_manager = TemplateManager([template_dir])
         
     def is_running(self) -> bool:
         """Check if the engine is running.
@@ -211,6 +212,9 @@ class Engine:
                     register_func(self)
                 except Exception as e:
                     logger.error(f"Failed to load package {entry_point.name}: {e}")
+        
+        # Update the template manager with network ranges from the registry
+        self.template_manager.set_network_ranges(self.registry.get_network_ranges())
         
         # Now directly discover and load all available generators
         self.discover_generators()

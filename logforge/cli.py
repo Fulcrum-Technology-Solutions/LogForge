@@ -110,49 +110,8 @@ def setup_engine(config: dict) -> Engine:
     Returns:
         The configured engine
     """
-    # Process network ranges configuration
-    network_ranges = None
-    if 'network_ranges' in config:
-        network_ranges = []
-        for range_config in config.get('network_ranges', []):
-            # Handle CIDR notation
-            cidr = range_config.get('cidr')
-            if cidr:
-                try:
-                    # Validate CIDR
-                    network = ipaddress.IPv4Network(cidr)
-                    name = range_config.get('name')
-                    
-                    # Add to network ranges - we'll pass the CIDR string directly
-                    if name:
-                        network_ranges.append((cidr, name))
-                    else:
-                        network_ranges.append((cidr,))
-                except ValueError as e:
-                    click.echo(f"Invalid CIDR notation in network range: {e}", err=True)
-                continue
-                
-            # Handle start/end IP notation
-            start_ip = range_config.get('start_ip')
-            end_ip = range_config.get('end_ip')
-            name = range_config.get('name')
-            
-            if start_ip and end_ip:
-                try:
-                    # Validate IP addresses
-                    ipaddress.IPv4Address(start_ip)
-                    ipaddress.IPv4Address(end_ip)
-                    
-                    # Add to network ranges
-                    if name:
-                        network_ranges.append((start_ip, end_ip, name))
-                    else:
-                        network_ranges.append((start_ip, end_ip))
-                except ValueError as e:
-                    click.echo(f"Invalid IP address in network range: {e}", err=True)
-    
-    # Initialize engine with network ranges
-    engine = Engine(network_ranges)
+    # Initialize engine
+    engine = Engine()
     
     # Load entity registry if specified
     if 'entity_registry' in config:
