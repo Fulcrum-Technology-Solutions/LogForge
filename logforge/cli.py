@@ -744,8 +744,8 @@ def select_template_menu(vendor, product, templates, active_generators):
             if modified:
                 save_configuration()
             return modified
-        elif 1 <= choice <= len(templates):
-            template = templates[choice - 1]
+        elif 1 <= choice <= len(sorted_templates):
+            template = sorted_templates[choice - 1]
             generator_name = template_to_generator.get(template['path'], '')
             
             if not generator_name:
