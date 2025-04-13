@@ -101,6 +101,39 @@ class Device:
         else:
             # Set as a regular attribute
             super().__setattr__(name, value)
+    
+    def __getattr__(self, name: str) -> Any:
+        """Custom attribute getter to handle custom fields.
+        
+        This is called when the attribute is not found through normal attribute access.
+        It allows Jinja2 templates to access custom fields using dot notation.
+        
+        Args:
+            name: The attribute name
+            
+        Returns:
+            The attribute value if found in _custom_fields
+            
+        Raises:
+            AttributeError: If the attribute is not found in _custom_fields
+        """
+        if name.startswith('custom_') and name in self._custom_fields:
+            return self._custom_fields[name]
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        
+    # This magic method is needed for Jinja2 to check attribute existence with 'is defined'
+    def __contains__(self, key: str) -> bool:
+        """Check if an attribute exists.
+        
+        This allows Jinja2 to check if attributes exist using 'is defined'.
+        
+        Args:
+            key: The attribute name
+            
+        Returns:
+            True if the attribute exists, False otherwise
+        """
+        return (hasattr(self, key) and getattr(self, key) is not None) or key in self._custom_fields
 
 
 @dataclass
