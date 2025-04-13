@@ -1,0 +1,15 @@
+{%- set user = registry.get_random_user() -%}
+{%- set device = registry.get_random_device() -%}
+{%- set current_time = current_timestamp() -%}
+{%- set formatted_time = format_timestamp(current_time, '%a %b %d %H:%M:%S %Y') -%}
+{%- set severities = ['Low', 'Medium', 'High', 'Critical'] -%}
+{%- set severity = severities | random -%}
+{%- set risk_scores = {'Low': random_int(1, 45), 'Medium': random_int(46, 74), 'High': random_int(75, 89), 'Critical': random_int(90, 100)} -%}
+{%- set risk_score = risk_scores[severity] -%}
+{%- set request_data_size = random_int(50, 200) -%}
+{%- set response_size = random_int(5000, 15000) -%}
+{%- set req_methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'] -%}
+{%- set req_method = req_methods | random -%}
+{%- set resp_codes = ['200', '302', '403', '404', '503'] -%}
+{%- set resp_code = '403' if severity != 'Low' else (resp_codes | random) -%}
+"{{ formatted_time }}","{{ user.department }}","HTTP","ad.doubleclick.net/adnetwork/tracking.php","Blocked","AdNetwork","Advertising and Marketing","{{ request_data_size }}","{{ response_size }}","0","0","Productivity Loss","Content Delivery Networks","Adware Distributions","AdwareAlert","{{ severity }}","{{ risk_score }}","AdClick Adware","Adware","{{ user.username }}","{{ user.department }}","{{ device.ip_address }}","{{ random_public_ip() }}","{{ req_method }}","{{ resp_code }}","{{ user.username }}/5.0 ({{ device.os_type }}; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36","None","URLFilter","SecurityPolicy_1","URL Filtering","None","NA","NA","N/A"

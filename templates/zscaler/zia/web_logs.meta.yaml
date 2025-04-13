@@ -1,0 +1,101 @@
+vendor: Zscaler
+product: ZIA
+data_source: Web Logs
+description: Zscaler Internet Access (ZIA) web logs for security-related events, including blocked adware and malware
+format: CSV
+frequency: high
+
+# Generator settings
+is_generator: true
+base_frequency: 0.5  # 1 event every 2 seconds on average
+time_patterns:
+  - business_hours
+  - night_hours
+  - weekend
+business_hours_multiplier: 2.0  # Increase frequency during business hours
+night_hours_multiplier: 0.3    # Decrease frequency during night hours
+weekend_multiplier: 0.5        # Medium frequency on weekends
+
+# Context values for template variables
+context:
+  content_type: "application/json"
+  rule_type: "URLFilter"
+  rule_label: "SecurityPolicy_1"
+  url_filter_rule_label: "URL Filtering"
+  ssl_decrypted: "NA"
+  external_spr: "NA"
+
+# Fields information
+fields:
+  - name: time
+    description: The time and date of the transaction
+    format: "%a %b %d %H:%M:%S %Y"
+  - name: location
+    description: The gateway location or sub-location of the source
+  - name: proto
+    description: The protocol type of the transaction
+  - name: url
+    description: The destination URL
+  - name: action
+    description: The action that the service took on the transaction
+    values: ["Allowed", "Blocked", "Cautioned"]
+  - name: appname
+    description: The name of the cloud application
+  - name: appclass
+    description: The web application class of the application
+  - name: reqdatasize
+    description: The size of the HTTP request payload in bytes
+  - name: respsize
+    description: The total size of the HTTP response in bytes
+  - name: reqsize
+    description: The request size in bytes
+  - name: respdatasize
+    description: The size of the HTTP response payload in bytes
+  - name: urlclass
+    description: The class of the destination URL
+  - name: urlsupercat
+    description: The super category of the destination URL
+  - name: urlcat
+    description: The category of the destination URL
+  - name: threatname
+    description: The name of the threat that was detected, if any
+  - name: threatseverity
+    description: The severity of the threat detected
+    values: ["Low", "Medium", "High", "Critical", "None"]
+  - name: riskscore
+    description: The Page Risk Index score (0-100)
+  - name: malwareclass
+    description: The class of malware detected
+  - name: malwarecat
+    description: The category of malware detected
+  - name: deviceowner
+    description: The owner of the device
+  - name: dept
+    description: The department of the user
+  - name: cip
+    description: The IP address of the user (source)
+  - name: sip
+    description: The destination server IP address
+  - name: reqmethod
+    description: The HTTP request method
+    values: ["GET", "POST", "PUT", "DELETE", "HEAD"]
+  - name: respcode
+    description: The HTTP response code sent to the client
+  - name: ua
+    description: The full user agent string
+  - name: referer
+    description: The HTTP referer URL
+  - name: ruletype
+    description: The type of policy
+  - name: rulelabel
+    description: The name of the rule that was applied
+  - name: urlfilterrulelabel
+    description: The name of the rule applied to the URL filter
+  - name: refererhost
+    description: The hostname of the referer URL
+  - name: externalspr
+    description: The SSL policy reasons
+  - name: ssldecrypted
+    description: Indicates whether the transaction was SSL inspected
+  - name: contenttype
+    description: The name of the content type
