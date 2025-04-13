@@ -1,5 +1,8 @@
 {%- set device = registry.get_random_device() -%}
 {%- set user = registry.get_random_user() -%}
+{%- set domain = registry.get_domain() -%}
+{%- set netbios_domain = registry.get_netbios_domain() -%}
+{%- set lockout_threshold = registry.get_org_setting('account_lockout_threshold', 5) -%}
 {%- set event_id = 4624 -%}
 {%- set process_id = random_int(1000, 9999) -%}
 {%- set thread_id = random_int(1000, 9999) -%}
@@ -19,19 +22,18 @@
     <Execution ProcessID="{{ process_id }}" ThreadID="{{ thread_id }}" />
     <Channel>Security</Channel>
     <Computer>{{ device.hostname }}</Computer>
-    {% if device.fqdn is defined %}
-    <FQDN>{{ device.fqdn }}</FQDN>
-    {% endif %}
+    <FQDN>{{ device.fqdn | default(device.hostname + '.' + domain) }}</FQDN>
+    <Domain>{{ netbios_domain }}</Domain>
     <Security />
   </s>
   <EventData>
     <Data Name="SubjectUserSid">{{ user.sid }}</Data>
     <Data Name="SubjectUserName">{{ user.username }}</Data>
-    <Data Name="SubjectDomainName">{{ user.domain }}</Data>
+    <Data Name="SubjectDomainName">{{ netbios_domain }}</Data>
     <Data Name="SubjectLogonId">0x{{ random_hex(5) }}</Data>
     <Data Name="TargetUserSid">{{ user.sid }}</Data>
     <Data Name="TargetUserName">{{ user.username }}</Data>
-    <Data Name="TargetDomainName">{{ user.domain }}</Data>
+    <Data Name="TargetDomainName">{{ netbios_domain }}</Data>
     <Data Name="TargetLogonId">0x{{ random_hex(5) }}</Data>
     <Data Name="LogonType">{{ logon_type }}</Data>
     <Data Name="LogonProcessName">Advapi</Data>
@@ -45,6 +47,8 @@
     <Data Name="ProcessName">C:\Windows\System32\svchost.exe</Data>
     <Data Name="IpAddress">{{ device.ip_address }}</Data>
     <Data Name="IpPort">{{ random_int(10000, 65535) }}</Data>
+    <Data Name="UserEmail">{{ user.username }}@{{ domain }}</Data>
+    <Data Name="AccountLockoutThreshold">{{ lockout_threshold }}</Data>
     {% if device.custom_asset_tag is defined %}
     <Data Name="AssetTag">{{ device.custom_asset_tag }}</Data>
     {% endif %}

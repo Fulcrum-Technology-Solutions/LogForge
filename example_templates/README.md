@@ -39,6 +39,10 @@ The following functions are available in templates and can be used either as fun
 - `registry.get_device(hostname)`: Get a specific device by hostname
 - `registry.get_user(username)`: Get a specific user by username
 - `registry.get_service(name)`: Get a specific service by name
+- `registry.get_organization()`: Get the organization object with all settings
+- `registry.get_domain()`: Get the organization's domain name (e.g., "example.com")
+- `registry.get_netbios_domain()`: Get the organization's NetBIOS domain name (e.g., "EXAMPLE")
+- `registry.get_org_setting(setting_name, default=None)`: Get a specific organization setting
 
 ## Usage Example
 
@@ -47,15 +51,21 @@ These functions can be used directly in templates:
 ```xml
 {%- set device = registry.get_random_device() -%}
 {%- set user = registry.get_random_user() -%}
+{%- set domain = registry.get_domain() -%}
+{%- set netbios_domain = registry.get_netbios_domain() -%}
 <Event>
   <TimeCreated SystemTime="{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%S.%fZ') }}" />
   <EventID>{{ random_int(1000, 9999) }}</EventID>
   <Computer>{{ device.hostname }}</Computer>
-  <FQDN>{{ device.fqdn | default(device.hostname) }}</FQDN>
+  <FQDN>{{ device.fqdn | default(device.hostname + '.' + domain) }}</FQDN>
+  <Domain>{{ netbios_domain }}</Domain>
   <IpAddress>{{ device.ip_address }}</IpAddress>
   <SourcePort>{{ random_port() }}</SourcePort>
   <User>{{ user.username }}</User>
+  <UserDomain>{{ netbios_domain }}</UserDomain>
+  <UserEmail>{{ user.username }}@{{ domain }}</UserEmail>
   <Department>{{ user.department }}</Department>
+  <PasswordExpiry>{{ registry.get_org_setting('password_expiry_days', 90) }}</PasswordExpiry>
   {% if device.custom_asset_tag is defined %}
   <AssetTag>{{ device.custom_asset_tag }}</AssetTag>
   {% endif %}
@@ -68,6 +78,9 @@ These functions can be used directly in templates:
 This example demonstrates:
 - Using `set` to store entities in variables for consistent references
 - Accessing the device's FQDN with a fallback value
+- Using organization's domain and NetBIOS domain names
+- Accessing specific organization settings with defaults
+- Creating a user email by combining username with domain
 - Conditionally including custom fields when they exist
 
 ## Template Metadata

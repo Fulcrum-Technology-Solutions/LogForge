@@ -26,6 +26,9 @@ context:
 # This enables consistent entity references throughout the template:
 # - set device = registry.get_random_device()
 # - set user = registry.get_random_user()
+# - set domain = registry.get_domain()
+# - set netbios_domain = registry.get_netbios_domain()
+# - set lockout_threshold = registry.get_org_setting('account_lockout_threshold', 5)
 # 
 # The device entity can include:
 # - device.hostname: Required device name
@@ -34,9 +37,16 @@ context:
 # - device.mac_address: Device MAC address
 # - device.custom_*: Custom fields defined in entities.yaml
 #
+# Organization settings:
+# - registry.get_domain(): Primary domain name (e.g., "acme.com")
+# - registry.get_netbios_domain(): Windows domain name (e.g., "ACME")
+# - registry.get_org_setting('setting_name', default_value): Access specific organization settings
+#
 # Example conditional:
 # {% if device.fqdn is defined %}
 # <FQDN>{{ device.fqdn }}</FQDN>
+# {% else %}
+# <FQDN>{{ device.hostname }}.{{ domain }}</FQDN>
 # {% endif %}
 
 # Parameter definitions

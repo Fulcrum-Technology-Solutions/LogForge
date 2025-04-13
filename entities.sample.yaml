@@ -1,5 +1,34 @@
 # Sample Entity Registry for Synthetic Log Generator
 
+# Organization-wide configurations
+# These settings define global properties for the entire environment
+organization:
+  name: "Acme Corporation"           # Organization name
+  domain: "acme.com"                # Primary domain name
+  netbios_domain: "ACME"            # NetBIOS domain name for Windows environments
+  timezone: "America/New_York"      # Primary timezone
+  industry: "Technology"            # Industry sector
+  location:
+    address: "100 Main Street"
+    city: "New York"
+    state: "New York"
+    zip: "10001"
+    country: "USA"
+    lat: 40.7128
+    long: -74.0060
+  contacts:
+    security: "security@acme.com"
+    it_support: "support@acme.com"
+    helpdesk: "helpdesk@acme.com"
+    hr: "hr@acme.com"
+  settings:
+    password_expiry_days: 90
+    account_lockout_threshold: 5
+    session_timeout_minutes: 30
+    max_login_attempts: 3
+    min_password_length: 12
+    require_mfa: true
+
 # Network ranges configuration for internal IP address generation
 # You can specify ranges using either:
 # 1. CIDR notation (e.g., "192.168.0.0/16")

@@ -66,10 +66,8 @@ class Device:
     
     def __post_init__(self):
         """Process any additional fields after initialization."""
-        # If fqdn is not provided but hostname exists, default it based on a domain from the first device
-        if self.fqdn is None and self.hostname:
-            # Don't set a default FQDN - just leave it as None if not provided
-            pass
+        # FQDN will be set by the registry when loading, if organization domain is available
+        pass
             
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation.
@@ -156,6 +154,28 @@ class Service:
         return asdict(self)
 
 
+@dataclass
+class Organization:
+    """Representation of an organization entity."""
+    
+    name: str
+    domain: str
+    netbios_domain: Optional[str] = None
+    timezone: Optional[str] = None
+    industry: Optional[str] = None
+    location: Optional[Dict[str, Any]] = None
+    contacts: Optional[Dict[str, str]] = None
+    settings: Optional[Dict[str, Any]] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation.
+        
+        Returns:
+            Dictionary representation of the organization
+        """
+        return asdict(self)
+
+
 class EntityRegistry:
     """Registry for entities like users, devices, and services."""
     
@@ -165,6 +185,7 @@ class EntityRegistry:
         self.devices: Dict[str, Device] = {}
         self.services: Dict[str, Service] = {}
         self.network_ranges: List[Tuple] = []
+        self.organization: Optional[Organization] = None
         
     def add_user(self, user: User):
         """Add a user to the registry.
@@ -274,6 +295,49 @@ class EntityRegistry:
             ]
         return self.network_ranges
         
+    def get_organization(self) -> Optional[Organization]:
+        """Get the organization information.
+        
+        Returns:
+            The organization object, or None if not defined
+        """
+        return self.organization
+        
+    def get_domain(self) -> str:
+        """Get the organization's domain name.
+        
+        Returns:
+            The domain name, or 'example.com' if not defined
+        """
+        if self.organization and self.organization.domain:
+            return self.organization.domain
+        return 'example.com'
+        
+    def get_netbios_domain(self) -> str:
+        """Get the organization's NetBIOS domain name.
+        
+        Returns:
+            The NetBIOS domain name, or 'EXAMPLE' if not defined
+        """
+        if self.organization and self.organization.netbios_domain:
+            return self.organization.netbios_domain
+        return 'EXAMPLE'
+        
+    def get_org_setting(self, setting_name: str, default: Any = None) -> Any:
+        """Get a specific organization setting.
+        
+        Args:
+            setting_name: The name of the setting to retrieve
+            default: The default value to return if the setting is not found
+            
+        Returns:
+            The setting value, or the default if not found
+        """
+        if not self.organization or not self.organization.settings:
+            return default
+            
+        return self.organization.settings.get(setting_name, default)
+        
     def load_from_file(self, file_path: str):
         """Load entities from a file.
         
@@ -338,6 +402,13 @@ class EntityRegistry:
             
             # Set network ranges in registry
             self.network_ranges = network_ranges
+            
+            # Load organization settings if present
+            org_data = data.get('organization')
+            if org_data:
+                self.organization = Organization(**org_data)
+                # Update device FQDNs if not set and org domain is available
+                org_domain = self.organization.domain
                 
             # Load users
             for user_data in data.get('users', []):
@@ -370,6 +441,10 @@ class EntityRegistry:
                 
                 # Create the device with standard fields
                 device = Device(**standard_fields)
+                
+                # Set FQDN using organization domain if not provided and org domain is available
+                if not device.fqdn and device.hostname and self.organization and self.organization.domain:
+                    device.fqdn = f"{device.hostname}.{self.organization.domain}"
                 
                 # Add custom fields
                 for key, value in custom_fields.items():
@@ -417,6 +492,10 @@ class EntityRegistry:
             'devices': [device.to_dict() for device in self.devices.values()],
             'services': [service.to_dict() for service in self.services.values()],
         }
+        
+        # Add organization data if it exists
+        if self.organization:
+            data['organization'] = self.organization.to_dict()
         
         try:
             if file_ext == '.json':

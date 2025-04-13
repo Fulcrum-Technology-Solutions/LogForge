@@ -1,5 +1,29 @@
 # Entity Registry for Synthetic Log Generator
 
+# Organization-wide configurations
+# These settings define global properties for the entire environment
+organization:
+  name: "Initech Corporation"           # Organization name
+  domain: "initech.com"                # Primary domain name
+  netbios_domain: "INITECH"            # NetBIOS domain name for Windows environments
+  timezone: "America/Chicago"          # Primary timezone
+  industry: "Technology"               # Industry sector
+  location:
+    address: "123 Tech Parkway"
+    city: "Austin"
+    state: "Texas"
+    zip: "78701"
+    country: "USA"
+    lat: 30.267153
+    long: -97.743057
+  contacts:
+    security: "security@initech.com"
+    it_support: "support@initech.com"
+  settings:
+    password_expiry_days: 90
+    account_lockout_threshold: 5
+    session_timeout_minutes: 30
+
 # Network ranges configuration for internal IP address generation
 # You can specify ranges using either:
 # 1. CIDR notation (e.g., "192.168.0.0/16")
