@@ -1,60 +1,54 @@
-{%- set user = registry.get_random_user() -%}
-{%- set device = registry.get_random_device() -%}
-{%- set timestamp = current_timestamp() -%}
-{%- set event_id = random_guid() -%}
-{%- set request_id = random_guid() -%}
-{%- set snapshot_id = "snap-" + random_string(17, "0123456789abcdef") -%}
-{%- set account_id = registry.get_org_setting("aws_account_id", "111111111111") -%}
-{%- set external_account_id = random_string(12, "0123456789") -%}
-{%- set region = ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1"] | random -%}
-{%- set user_type = ["IAMUser", "AssumedRole"] | random -%}
-{%- set access_key_id = "AKIA" + random_string(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") -%}
 {
-  "eventVersion": "1.08",
+  "eventVersion": "{{ random_string(4, '1.08') }}",
+  {% set identity_type = ['IAMUser', 'AssumedRole'] | random %}
+  {% set account_id = random_int(100000000000, 999999999999) %}
+  {% set principal_id = random_string(21, 'AIDA') %}
+  {% set username = registry.get_random_user().username %}
+  {% set role_name = random_string(10, 'role_') %}
+  {% set policy_name = ['AtomicRedTeam', 'VulnerablePolicy', 'Privesc2', 'AdminPolicy', random_string(10, 'custom-policy-')] | random %}
+  {% set has_error = random_int(0, 2) %}
   "userIdentity": {
-    "type": "{{ user_type }}",
-    "principalId": "{{ "AIDA" + random_string(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") }}",
-    "arn": "arn:aws:iam::{{ account_id }}:user/{{ user.username }}",
+    "type": "{{ identity_type }}",
+    "principalId": "{{ principal_id }}",
+    "arn": "arn:aws:{% if identity_type == 'IAMUser' %}iam::{{ account_id }}:user/{{ username }}{% else %}sts::{{ account_id }}:assumed-role/{{ role_name }}/{{ username }}@{{ registry.get_domain() }}{% endif %}",
     "accountId": "{{ account_id }}",
-    "accessKeyId": "{{ access_key_id }}",
-    "userName": "{{ user.username }}"
-  },
-  "eventTime": "{{ timestamp | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}",
-  "eventSource": "ec2.amazonaws.com",
-  "eventName": "ModifySnapshotAttribute",
-  "awsRegion": "{{ region }}",
-  "sourceIPAddress": "{{ device.ip_address }}",
-  "userAgent": "{{ ["aws-cli/2.0.62 Python/3.9.2 Darwin/19.6.0 source/x86_64 command/ec2.modify-snapshot-attribute", "console.ec2.amazonaws.com", "stratus-red-team_" + random_guid()] | random }}",
-  "requestParameters": {
-    "snapshotId": "{{ snapshot_id }}",
-    "createVolumePermission": {
-      "add": {
-        "items": [
-          {
-            "userId": "{{ external_account_id }}"
-          }
-        ]
+    "accessKeyId": "{{ random_string(20, 'AKIA') }}",
+    "userName": "{% if identity_type == 'IAMUser' %}{{ username }}{% endif %}"{% if identity_type == 'AssumedRole' %},
+    "sessionContext": {
+      "sessionIssuer": {
+        "type": "Role",
+        "principalId": "{{ random_string(21, 'ARO') }}",
+        "arn": "arn:aws:iam::{{ account_id }}:role/{{ role_name }}",
+        "accountId": "{{ account_id }}",
+        "userName": "{{ role_name }}"
+      },
+      "webIdFederationData": {},
+      "attributes": {
+        "mfaAuthenticated": "false",
+        "creationDate": "{{ (current_timestamp() - random_int(0, 3600)) | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}"
       }
-    },
-    "attributeType": "CREATE_VOLUME_PERMISSION"
+    }{% endif %}
   },
-  "responseElements": {
-    "requestId": "{{ request_id }}",
-    "_return": true
+  "eventTime": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}",
+  "eventSource": "iam.amazonaws.com",
+  "eventName": "DeletePolicy",
+  "awsRegion": "{{ ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'] | random }}",
+  "sourceIPAddress": "{{ random_private_ip() if random_int(0, 1) == 0 else random_public_ip() }}",
+  "userAgent": "{{ ['aws-cli/2.0.62 Python/3.9.2 Darwin/19.6.0 source/x86_64 command/iam.delete-policy', 'aws-sdk-go/1.36.7 (go1.15.5; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.14.4 (+https://www.terraform.io)', 'console.amazonaws.com'] | random }}",
+  {% if has_error == 1 %}
+  {% set error_code = ['NoSuchEntityException', 'DeleteConflictException', 'AccessDenied'] | random %}
+  "errorCode": "{{ error_code }}",
+  "errorMessage": "{% if error_code == 'NoSuchEntityException' %}Policy arn:aws:iam::{{ account_id }}:policy/{{ policy_name }} was not found.{% elif error_code == 'DeleteConflictException' %}{{ ['This policy has more than one version. Before you delete a policy, you must delete the policy\'s versions. The default version is deleted with the policy.', 'Cannot delete a policy attached to entities.'] | random }}{% elif error_code == 'AccessDenied' %}User: arn:aws:{% if identity_type == 'IAMUser' %}iam::{{ account_id }}:user/{{ username }}{% else %}sts::{{ account_id }}:assumed-role/{{ role_name }}/{{ username }}@{{ registry.get_domain() }}{% endif %} is not authorized to perform: iam:DeletePolicy on resource: policy arn:aws:iam::{{ account_id }}:policy/{{ policy_name }} with an explicit deny{% endif %}",
+  {% endif %}
+  "requestParameters": {
+    "policyArn": "arn:aws:iam::{{ account_id }}:policy/{{ policy_name }}"
   },
-  "requestID": "{{ request_id }}",
-  "eventID": "{{ event_id }}",
+  "responseElements": null,
+  "requestID": "{{ random_guid() }}",
+  "eventID": "{{ random_guid() }}",
   "readOnly": false,
   "eventType": "AwsApiCall",
   "managementEvent": true,
-  "recipientAccountId": "{{ account_id }}",
-  "eventCategory": "Management"
-  {%- if random_int(0, 1) == 1 -%}
-  ,
-  "tlsDetails": {
-    "tlsVersion": "TLSv1.2",
-    "cipherSuite": "ECDHE-RSA-AES128-GCM-SHA256",
-    "clientProvidedHostHeader": "ec2.{{ region }}.amazonaws.com"
-  }
-  {%- endif -%}
+  "eventCategory": "Management",
+  "recipientAccountId": "{{ account_id }}"
 }
