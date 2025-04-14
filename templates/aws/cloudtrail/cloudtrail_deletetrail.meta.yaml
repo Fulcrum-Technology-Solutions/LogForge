@@ -1,6 +1,6 @@
 vendor: AWS
 product: CloudTrail
-data_source: CloudTrail Logs
+data_source: DeleteTrail Event
 description: AWS CloudTrail DeleteTrail event that occurs when a CloudTrail trail is deleted. This is a potentially suspicious activity that could indicate defense evasion tactics to hide AWS activity.
 format: JSON
 frequency: low
