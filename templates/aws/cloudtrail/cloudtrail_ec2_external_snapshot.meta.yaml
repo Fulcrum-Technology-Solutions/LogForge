@@ -1,6 +1,6 @@
 vendor: AWS
 product: CloudTrail
-data_source: EC2 ModifySnapshotAttribute Events
+data_source: EC2 Snapshot Shared Externally
 description: AWS CloudTrail logs for EC2 snapshot modifications, specifically when snapshots are shared with external AWS accounts. This activity could indicate data exfiltration attempts if unauthorized.
 format: JSON
 frequency: low
