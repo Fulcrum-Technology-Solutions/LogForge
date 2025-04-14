@@ -5,7 +5,7 @@
 {%- set subject_sid = "S-1-5-21-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(1000, 9999) -%}
 {%- set target_sid = "S-1-5-21-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(10000, 99999) ~ "-" ~ random_int(1000, 9999) -%}
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
-  <s>
+  <System>
     <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
     <EventID>{{ event_id }}</EventID>
     <Version>0</Version>
@@ -20,7 +20,7 @@
     <Channel>Security</Channel>
     <Computer>{{ hostname }}</Computer>
     <Security />
-  </s>
+  </System>
   <EventData>
     <Data Name="SubjectUserSid">{{ subject_sid }}</Data>
     <Data Name="SubjectUserName">{{ subject_user.username }}</Data>
@@ -34,7 +34,7 @@
     <Data Name="LogonProcessName">Advapi</Data>
     <Data Name="AuthenticationPackageName">Negotiate</Data>
     <Data Name="WorkstationName">{{ source_device.hostname }}</Data>
-    <Data Name="LogonGuid">{{{ random_guid().upper() }}}</Data>
+    <Data Name="LogonGuid">{{ '{' }}{{ random_guid().upper() }}{{ '}' }}</Data>
     <Data Name="TransmittedServices">-</Data>
     <Data Name="LmPackageName">-</Data>
     <Data Name="KeyLength">0</Data>

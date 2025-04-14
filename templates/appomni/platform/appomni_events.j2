@@ -18,7 +18,7 @@
     "service": {
       "account_id": "{{ random_guid() }}",
       "id": {{ random_int(10000, 99999) }},
-      "name": "{{ registry.get_random_organization().name }}",
+      "name": "{{ registry.get_domain() | default('example.com') | replace('.com', '') | replace('.org', '') | replace('.net', '') | capitalize }}",
       "slug": "o365",
       "type": "o365"
     },
@@ -54,10 +54,10 @@
     "address": "{{ random_private_ip() }}",
     "as": {
       "country": "US",
-      "domain": "{{ ['example.com', 'company.org', 'corporation.net'] | random }}",
+      "domain": "{{ registry.get_domain() | default('example.com') }}",
       "number": {{ random_int(10000, 99999) }},
       "organization": {
-        "name": "{{ registry.get_random_organization().name }}"
+        "name": "{{ registry.get_domain() | default('example.com') | replace('.com', '') | replace('.org', '') | replace('.net', '') | capitalize }}"
       },
       "type": "business"
     },
