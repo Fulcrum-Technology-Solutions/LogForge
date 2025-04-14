@@ -46,6 +46,17 @@ cd LogForge
 pip install -e .
 ```
 
+If the `logforge` command isn't available after installation, you can run it using:
+
+```bash
+# Run using the Python module syntax
+python -m logforge.cli [COMMAND] [OPTIONS]
+
+# Or use the executable scripts provided in the bin directory
+./bin/logforge [COMMAND] [OPTIONS]
+./bin/logforge-cli [COMMAND] [OPTIONS]
+```
+
 ## Configuration
 
 LogForge uses YAML configuration files to define outputs, time patterns, and active generators. It also uses a separate entities YAML file to define users, devices, and services for use in log generation.

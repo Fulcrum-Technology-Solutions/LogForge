@@ -22,5 +22,6 @@ setup(
             "logforge=logforge.cli:main",
         ],
     },
+    scripts=['bin/logforge', 'bin/logforge-cli'],  # Add executables
     python_requires=">=3.8",
 )
