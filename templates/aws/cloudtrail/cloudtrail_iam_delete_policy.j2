@@ -1,0 +1,47 @@
+{
+  "eventVersion": "{{ random_string(4, '1.08') }}",
+  "userIdentity": {
+    "type": "{% set identity_types = ['IAMUser', 'AssumedRole'] %}{{ identity_types | random }}",
+    "principalId": "{{ random_string(21, 'AIDA') }}",
+    "arn": "arn:aws:{% if userIdentity.type == 'IAMUser' %}iam::{{ random_int(100000000000, 999999999999) }}:user/{{ registry.get_random_user().username }}{% else %}sts::{{ random_int(100000000000, 999999999999) }}:assumed-role/{{ random_string(10, 'role_') }}/{{ registry.get_random_user().username }}@{{ registry.get_domain() }}{% endif %}",
+    "accountId": "{{ random_int(100000000000, 999999999999) }}",
+    "accessKeyId": "{{ random_string(20, 'AKIA') }}",
+    "userName": "{% if userIdentity.type == 'IAMUser' %}{{ registry.get_random_user().username }}{% endif %}"{% if userIdentity.type == 'AssumedRole' %},
+    "sessionContext": {
+      "sessionIssuer": {
+        "type": "Role",
+        "principalId": "{{ random_string(21, 'ARO') }}",
+        "arn": "arn:aws:iam::{{ userIdentity.accountId }}:role/{{ random_string(10, 'role_') }}",
+        "accountId": "{{ userIdentity.accountId }}",
+        "userName": "{{ random_string(10, 'role_') }}"
+      },
+      "webIdFederationData": {},
+      "attributes": {
+        "mfaAuthenticated": "false",
+        "creationDate": "{{ (current_timestamp() - random_int(0, 3600)) | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}"
+      }
+    }{% endif %}
+  },
+  "eventTime": "{{ current_timestamp() | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}",
+  "eventSource": "iam.amazonaws.com",
+  "eventName": "DeletePolicy",
+  "awsRegion": "{{ ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'] | random }}",
+  "sourceIPAddress": "{{ random_private_ip() if random_int(0, 1) == 0 else random_public_ip() }}",
+  "userAgent": "{{ ['aws-cli/2.0.62 Python/3.9.2 Darwin/19.6.0 source/x86_64 command/iam.delete-policy', 'aws-sdk-go/1.36.7 (go1.15.5; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.14.4 (+https://www.terraform.io)', 'console.amazonaws.com'] | random }}",
+  {% set has_error = random_int(0, 2) %}
+  {% if has_error == 1 %}
+  "errorCode": "{{ ['NoSuchEntityException', 'DeleteConflictException', 'AccessDenied'] | random }}",
+  "errorMessage": "{% if errorCode == 'NoSuchEntityException' %}Policy {{ requestParameters.policyArn }} was not found.{% elif errorCode == 'DeleteConflictException' %}{{ ['This policy has more than one version. Before you delete a policy, you must delete the policy\'s versions. The default version is deleted with the policy.', 'Cannot delete a policy attached to entities.'] | random }}{% elif errorCode == 'AccessDenied' %}User: {{ userIdentity.arn }} is not authorized to perform: iam:DeletePolicy on resource: policy {{ requestParameters.policyArn }} with an explicit deny{% endif %}",
+  {% endif %}
+  "requestParameters": {
+    "policyArn": "arn:aws:iam::{{ userIdentity.accountId }}:policy/{{ ['AtomicRedTeam', 'VulnerablePolicy', 'Privesc2', 'AdminPolicy', random_string(10, 'custom-policy-')] | random }}"
+  },
+  "responseElements": null,
+  "requestID": "{{ random_guid() }}",
+  "eventID": "{{ random_guid() }}",
+  "readOnly": false,
+  "eventType": "AwsApiCall",
+  "managementEvent": true,
+  "eventCategory": "Management",
+  "recipientAccountId": "{{ userIdentity.accountId }}"
+}

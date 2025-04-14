@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "product": {
+      "version": "1.11",
+      "name": "CloudTrail",
+      "vendor_name": "AWS",
+      "feature": {
+        "name": "Management"
+      }
+    },
+    "event_code": "AwsApiCall",
+    "uid": "{{ random_guid() }}",
+    "profiles": "cloud",
+    "profiles": "datetime",
+    "version": "1.1.0"
+  },
+  "time": {{ current_timestamp() }},
+  "time_dt": {{ current_timestamp() }},
+  "cloud": {
+    "region": "us-east-1",
+    "provider": "AWS"
+  },
+  "api": {
+    "response": {
+      "error": "",
+      "message": "",
+      "data": ""
+    },
+    "operation": "DeleteTrail",
+    "version": "",
+    "service": {
+      "name": "cloudtrail.amazonaws.com"
+    },
+    "request": {
+      "data": "{\"name\":\"arn:aws:cloudtrail:us-east-1:{{ random_int(10000000000, 99999999999) }}:trail/test\"}",
+      "uid": "{{ random_guid() }}"
+    }
+  },
+  "dst_endpoint": {
+    "svc_name": ""
+  },
+  "actor": {
+    "user": {
+      "type": "AssumedRole",
+      "name": "",
+      "uid_alt": "{{ random_string(17, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}:{{ registry.get_random_user().username }}@{{ registry.get_domain() }}",
+      "uid": "arn:aws:sts::{{ random_int(10000000000, 99999999999) }}:assumed-role/{{ random_string(13, 'abcdef0123456789') }}/{{ registry.get_random_user().username }}@{{ registry.get_domain() }}",
+      "account": {
+        "uid": "{{ random_int(10000000000, 99999999999) }}"
+      },
+      "credential_uid": "{{ random_string(20, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}"
+    },
+    "session": {
+      "created_time_dt": {{ current_timestamp() - random_int(1000, 10000) }},
+      "is_mfa": false,
+      "issuer": "arn:aws:iam::{{ random_int(10000000000, 99999999999) }}:role/aws-reserved/sso.amazonaws.com/us-west-2/{{ random_string(13, 'abcdef0123456789') }}"
+    },
+    "invoked_by": "",
+    "idp": {
+      "name": ""
+    }
+  },
+  "http_request": {
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+  },
+  "src_endpoint": {
+    "uid": "",
+    "ip": "{{ random_public_ip() }}",
+    "domain": ""
+  },
+  "session": {
+    "uid": "",
+    "uid_alt": "",
+    "credential_uid": "",
+    "issuer": ""
+  },
+  "policy": {
+    "uid": ""
+  },
+  "resources": null,
+  "class_name": "API Activity",
+  "class_uid": 6003,
+  "category_name": "Application Activity",
+  "category_uid": 6,
+  "severity_id": 1,
+  "severity": "Informational",
+  "user": {
+    "uid_alt": "",
+    "uid": "",
+    "name": ""
+  },
+  "activity_name": "Delete",
+  "activity_id": 4,
+  "type_uid": 600304,
+  "type_name": "API Activity: Delete",
+  "status": "Success",
+  "is_mfa": false,
+  "unmapped": {
+    "userIdentity.sessionContext.sessionIssuer.type": "Role",
+    "sessionCredentialFromConsole": "true",
+    "tlsDetails.clientProvidedHostHeader": "cloudtrail.us-east-1.amazonaws.com",
+    "userIdentity.sessionContext.sessionIssuer.userName": "{{ random_string(13, 'abcdef0123456789') }}",
+    "userIdentity.sessionContext.sessionIssuer.principalId": "{{ random_string(17, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}",
+    "recipientAccountId": "{{ random_int(10000000000, 99999999999) }}",
+    "readOnly": "false",
+    "tlsDetails.tlsVersion": "TLSv1.3",
+    "managementEvent": "true",
+    "userIdentity.sessionContext.sessionIssuer.accountId": "{{ random_int(10000000000, 99999999999) }}",
+    "tlsDetails.cipherSuite": "TLS_AES_128_GCM_SHA256"
+  },
+  "accountid": "",
+  "region": "",
+  "asl_version": "",
+  "observables": {
+    "name": "src_endpoint.ip",
+    "value": "{{ src_endpoint.ip }}",
+    "type": "IP Address",
+    "type_id": 2
+  }
+}

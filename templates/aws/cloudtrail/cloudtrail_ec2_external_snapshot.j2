@@ -1,0 +1,60 @@
+{%- set user = registry.get_random_user() -%}
+{%- set device = registry.get_random_device() -%}
+{%- set timestamp = current_timestamp() -%}
+{%- set event_id = random_guid() -%}
+{%- set request_id = random_guid() -%}
+{%- set snapshot_id = "snap-" + random_string(17, "0123456789abcdef") -%}
+{%- set account_id = registry.get_org_setting("aws_account_id", "111111111111") -%}
+{%- set external_account_id = random_string(12, "0123456789") -%}
+{%- set region = ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1"] | random -%}
+{%- set user_type = ["IAMUser", "AssumedRole"] | random -%}
+{%- set access_key_id = "AKIA" + random_string(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") -%}
+{
+  "eventVersion": "1.08",
+  "userIdentity": {
+    "type": "{{ user_type }}",
+    "principalId": "{{ "AIDA" + random_string(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") }}",
+    "arn": "arn:aws:iam::{{ account_id }}:user/{{ user.username }}",
+    "accountId": "{{ account_id }}",
+    "accessKeyId": "{{ access_key_id }}",
+    "userName": "{{ user.username }}"
+  },
+  "eventTime": "{{ timestamp | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}",
+  "eventSource": "ec2.amazonaws.com",
+  "eventName": "ModifySnapshotAttribute",
+  "awsRegion": "{{ region }}",
+  "sourceIPAddress": "{{ device.ip_address }}",
+  "userAgent": "{{ ["aws-cli/2.0.62 Python/3.9.2 Darwin/19.6.0 source/x86_64 command/ec2.modify-snapshot-attribute", "console.ec2.amazonaws.com", "stratus-red-team_" + random_guid()] | random }}",
+  "requestParameters": {
+    "snapshotId": "{{ snapshot_id }}",
+    "createVolumePermission": {
+      "add": {
+        "items": [
+          {
+            "userId": "{{ external_account_id }}"
+          }
+        ]
+      }
+    },
+    "attributeType": "CREATE_VOLUME_PERMISSION"
+  },
+  "responseElements": {
+    "requestId": "{{ request_id }}",
+    "_return": true
+  },
+  "requestID": "{{ request_id }}",
+  "eventID": "{{ event_id }}",
+  "readOnly": false,
+  "eventType": "AwsApiCall",
+  "managementEvent": true,
+  "recipientAccountId": "{{ account_id }}",
+  "eventCategory": "Management"
+  {%- if random_int(0, 1) == 1 -%}
+  ,
+  "tlsDetails": {
+    "tlsVersion": "TLSv1.2",
+    "cipherSuite": "ECDHE-RSA-AES128-GCM-SHA256",
+    "clientProvidedHostHeader": "ec2.{{ region }}.amazonaws.com"
+  }
+  {%- endif -%}
+}
