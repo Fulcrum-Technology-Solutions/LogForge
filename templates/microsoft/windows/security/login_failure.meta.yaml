@@ -3,18 +3,18 @@ product: Windows
 data_source: Security Login Failure
 description: Windows Security failed login events (EventID 4625)
 format: XML
-frequency: medium
+frequency: low
 
 # Generator settings for template-based generators
 is_generator: true
-base_frequency: 0.1
+base_frequency: 0.05  # Lower than login success (1 event every 20 seconds)
 time_patterns:
   - business_hours
   - night_hours
   - weekend
-business_hours_multiplier: 1.5
-night_hours_multiplier: 0.3
-weekend_multiplier: 0.5
+business_hours_multiplier: 1.0  # No multiplier during business hours
+night_hours_multiplier: 0.2  # Even lower at night
+weekend_multiplier: 0.3  # Low on weekends too
 
 # Context values for rendering
 context:
