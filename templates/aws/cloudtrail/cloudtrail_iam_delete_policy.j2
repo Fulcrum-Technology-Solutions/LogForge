@@ -1,19 +1,18 @@
+{% set eventVersion = random_string(4, '1.08') %}
+{% set identity_type = ['IAMUser', 'AssumedRole'] | random %}
+{% set account_id = random_int(100000000000, 999999999999) %}
+{% set user = registry.get_random_user() %}
+{% set role_name = random_string(10, 'role_') %}
+{% set policy_name = ['AtomicRedTeam', 'VulnerablePolicy', 'Privesc2', 'AdminPolicy', random_string(10, 'custom-policy-')] | random %}
+{% set arn = "arn:aws:" ~ (
+  "iam::" ~ account_id ~ ":user/" ~ user.username if identity_type == 'IAMUser' 
+  else "sts::" ~ account_id ~ ":assumed-role/" ~ role_name ~ "/" ~ user.username ~ "@" ~ registry.get_domain()
+) %}
+{% set has_error = random_int(0, 2) %}
+{% set error_code = ['NoSuchEntityException', 'DeleteConflictException', 'AccessDenied'] | random if has_error == 1 else '' %}
+{% set policy_arn = "arn:aws:iam::" ~ account_id ~ ":policy/" ~ policy_name %}
 {
-  "eventVersion": "{{ random_string(4, '1.08') }}",
-  {% set identity_type = ['IAMUser', 'AssumedRole'] | random %}
-  {% set account_id = random_int(100000000000, 999999999999) %}
-  {% set user = registry.get_random_user() %}
-  {% set role_name = random_string(10, 'role_') %}
-  {% set policy_name = ['AtomicRedTeam', 'VulnerablePolicy', 'Privesc2', 'AdminPolicy', random_string(10, 'custom-policy-')] | random %}
-  {% set arn = "arn:aws:" ~ (
-    "iam::" ~ account_id ~ ":user/" ~ user.username if identity_type == 'IAMUser' 
-    else "sts::" ~ account_id ~ ":assumed-role/" ~ role_name ~ "/" ~ user.username ~ "@" ~ registry.get_domain()
-  ) %}
-  {% set has_error = random_int(0, 2) %}
-  {% if has_error == 1 %}
-    {% set error_code = ['NoSuchEntityException', 'DeleteConflictException', 'AccessDenied'] | random %}
-    {% set policy_arn = "arn:aws:iam::" ~ account_id ~ ":policy/" ~ policy_name %}
-  {% endif %}
+  "eventVersion": "{{ eventVersion }}",
   "userIdentity": {
     "type": "{{ identity_type }}",
     "principalId": "{{ random_string(21, 'AIDA') }}",
