@@ -1,0 +1,16 @@
+{%- set eventId = random_guid() -%}
+{%- set timestamp = current_timestamp() -%}
+{%- set username = registry.get_random_user().username -%}
+{%- set device = registry.get_random_device() -%}
+{%- set severity = ["INFO", "WARNING", "ERROR"] | random -%}
+{
+  "eventId": "{{ eventId }}",
+  "timestamp": "{{ timestamp | format_timestamp('%Y-%m-%dT%H:%M:%SZ') }}",
+  "username": "{{ username }}",
+  "device": {
+    "hostname": "{{ device.hostname }}",
+    "ipAddress": "{{ device.ip_address }}"
+  },
+  "severity": "{{ severity }}",
+  "message": "User {{ username }} performed action on {{ device.hostname }}"
+}

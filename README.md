@@ -34,6 +34,7 @@ LogForge uses a template-based approach that doesn't require any coding to add n
 - **Intelligent File Organization**: Separate files for each log type
 - **Service Mode**: Run as a systemd service for continuous generation
 - **Headless Operation**: Run without interaction for automated deployments
+- **Template Verification**: Tools to verify template quality and fix common issues
 
 ## Installation
 
