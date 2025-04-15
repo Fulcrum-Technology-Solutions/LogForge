@@ -137,8 +137,8 @@ def check_metadata(template_dir: str) -> int:
 
 def main():
     parser = argparse.ArgumentParser(description="Fix common template issues")
-    parser.add_argument("--dir", "-d", default="templates",
-                        help="Template directory (default: templates)")
+    parser.add_argument("--dir", "-d", default=None,
+                        help="Template directory (default: auto-detected templates directory)")
     parser.add_argument("--fix-whitespace", "-w", action="store_true",
                         help="Fix whitespace control issues")
     parser.add_argument("--check-metadata", "-m", action="store_true",
@@ -148,11 +148,24 @@ def main():
     
     args = parser.parse_args()
     
+    # Auto-detect template directory if not specified
+    template_dir = args.dir
+    if template_dir is None:
+        # Find the project root by walking up from the current file
+        current_file = Path(__file__).resolve()
+        project_root = current_file.parent.parent.parent  # utils -> logforge -> project_root
+        template_dir = project_root / "templates"
+        if not template_dir.exists():
+            print(f"Error: Auto-detected template directory {template_dir} not found")
+            print("Please specify a template directory with --dir")
+            sys.exit(1)
+        template_dir = str(template_dir)
+    
     if args.fix_whitespace:
-        fix_all_templates(args.dir, args.dry_run)
+        fix_all_templates(template_dir, args.dry_run)
     
     if args.check_metadata:
-        check_metadata(args.dir)
+        check_metadata(template_dir)
     
     if not args.fix_whitespace and not args.check_metadata:
         parser.print_help()
