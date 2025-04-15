@@ -8,7 +8,7 @@
 {%- set thread_id = random_int(1000, 9999) -%}
 {%- set logon_type = random_choice([2, 3, 5, 7, 10]) -%}
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
-  <s>
+  <System>
     <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
     <EventID>{{ event_id }}</EventID>
     <Version>0</Version>
@@ -25,7 +25,7 @@
     <FQDN>{{ device.fqdn | default(device.hostname + '.' + domain) }}</FQDN>
     <Domain>{{ netbios_domain }}</Domain>
     <Security />
-  </s>
+  </System>
   <EventData>
     <Data Name="SubjectUserSid">{{ user.sid }}</Data>
     <Data Name="SubjectUserName">{{ user.username }}</Data>
