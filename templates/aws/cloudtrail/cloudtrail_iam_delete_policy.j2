@@ -41,10 +41,10 @@
   "awsRegion": "{{ ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'] | random }}",
   "sourceIPAddress": "{{ random_private_ip() if random_int(0, 1) == 0 else random_public_ip() }}",
   "userAgent": "{{ ['aws-cli/2.0.62 Python/3.9.2 Darwin/19.6.0 source/x86_64 command/iam.delete-policy', 'aws-sdk-go/1.36.7 (go1.15.5; darwin; amd64) APN/1.0 HashiCorp/1.0 Terraform/0.14.4 (+https://www.terraform.io)', 'console.amazonaws.com'] | random }}",
-  {% if has_error == 1 %}
+  {%- if has_error == 1 -%}
   "errorCode": "{{ error_code }}",
   "errorMessage": "{% if error_code == 'NoSuchEntityException' %}Policy {{ policy_arn }} was not found.{% elif error_code == 'DeleteConflictException' %}{{ ['This policy has more than one version. Before you delete a policy, you must delete the policy\'s versions. The default version is deleted with the policy.', 'Cannot delete a policy attached to entities.'] | random }}{% elif error_code == 'AccessDenied' %}User: {{ arn }} is not authorized to perform: iam:DeletePolicy on resource: policy {{ policy_arn }} with an explicit deny{% endif %}",
-  {% endif %}
+  {%- endif -%}
   "requestParameters": {
     "policyArn": "arn:aws:iam::{{ account_id }}:policy/{{ policy_name }}"
   },
