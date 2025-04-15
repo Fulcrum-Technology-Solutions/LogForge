@@ -17,8 +17,8 @@
 {%- set agent_version = random_int(20, 25) ~ '.' ~ random_int(1, 4) ~ '.' ~ random_int(1, 9) ~ '.' ~ random_int(100, 999) -%}
 {%- set group_name = ['Post Deployment', 'Security Group', 'Default Group', 'Restricted Access'] | random ~ ' - ' ~ ['USB blocked', 'Full Protection', 'Standard'] | random -%}
 {%- set site_name = ['Corporate HQ', 'Regional Office', 'Branch', 'Cloud'] | random ~ ' ' ~ ['Clients', 'Servers', 'Endpoints'] | random -%}
-{%- set domain_parts = device.fqdn | default(device.hostname ~ '.example.com') | split('.') -%}
-{%- set domain = domain_parts[domain_parts|length - 2:] | join('.') -%}
+{%- set fqdn = device.fqdn | default(device.hostname ~ '.example.com') -%}
+{%- set domain = fqdn.split('.')[-2:] | join('.') if '.' in fqdn else 'example.com' -%}
 {
     "agentDetectionInfo": {
       "accountId": "{{ random_string(length=19, chars='0123456789') }}",
