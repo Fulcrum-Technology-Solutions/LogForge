@@ -1,0 +1,9 @@
+vendor: Example
+product: Test
+data_source: Whitespace Test
+description: Template for testing whitespace control
+format: json
+
+# Generator settings
+is_generator: true
+base_frequency: 0.1
