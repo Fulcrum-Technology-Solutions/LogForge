@@ -1,3 +1,14 @@
+{%- set account_id = random_int(10000000000, 99999999999) -%}
+{%- set source_ip = random_public_ip() -%}
+{%- set user = registry.get_random_user() -%}
+{%- set username = user.username if user else "jsmith" -%}
+{%- set domain = registry.get_domain() | default("example.com") -%}
+{%- set role_id = random_string(13, 'abcdef0123456789') -%}
+{%- set principal_id = random_string(17, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') -%}
+{%- set access_key_id = random_string(20, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') -%}
+{%- set session_created_time = current_timestamp() - random_int(1000, 10000) -%}
+{%- set request_id = random_guid() -%}
+{%- set event_id = random_guid() -%}
 {
   "metadata": {
     "product": {
@@ -32,8 +43,8 @@
       "name": "cloudtrail.amazonaws.com"
     },
     "request": {
-      "data": "{\"name\":\"arn:aws:cloudtrail:us-east-1:{{ random_int(10000000000, 99999999999) }}:trail/test\"}",
-      "uid": "{{ random_guid() }}"
+      "data": "{\"name\":\"arn:aws:cloudtrail:us-east-1:{{ account_id }}:trail/test\"}",
+      "uid": "{{ request_id }}"
     }
   },
   "dst_endpoint": {
@@ -43,17 +54,17 @@
     "user": {
       "type": "AssumedRole",
       "name": "",
-      "uid_alt": "{{ random_string(17, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}:{{ registry.get_random_user().username }}@{{ registry.get_domain() }}",
-      "uid": "arn:aws:sts::{{ random_int(10000000000, 99999999999) }}:assumed-role/{{ random_string(13, 'abcdef0123456789') }}/{{ registry.get_random_user().username }}@{{ registry.get_domain() }}",
+      "uid_alt": "{{ principal_id }}:{{ username }}@{{ domain }}",
+      "uid": "arn:aws:sts::{{ account_id }}:assumed-role/{{ role_id }}/{{ username }}@{{ domain }}",
       "account": {
-        "uid": "{{ random_int(10000000000, 99999999999) }}"
+        "uid": "{{ account_id }}"
       },
-      "credential_uid": "{{ random_string(20, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}"
+      "credential_uid": "{{ access_key_id }}"
     },
     "session": {
-      "created_time_dt": {{ current_timestamp() - random_int(1000, 10000) }},
+      "created_time_dt": {{ session_created_time }},
       "is_mfa": false,
-      "issuer": "arn:aws:iam::{{ random_int(10000000000, 99999999999) }}:role/aws-reserved/sso.amazonaws.com/us-west-2/{{ random_string(13, 'abcdef0123456789') }}"
+      "issuer": "arn:aws:iam::{{ account_id }}:role/aws-reserved/sso.amazonaws.com/us-west-2/{{ role_id }}"
     },
     "invoked_by": "",
     "idp": {
@@ -65,7 +76,7 @@
   },
   "src_endpoint": {
     "uid": "",
-    "ip": "{{ random_public_ip() }}",
+    "ip": "{{ source_ip }}",
     "domain": ""
   },
   "session": {
@@ -99,13 +110,13 @@
     "userIdentity.sessionContext.sessionIssuer.type": "Role",
     "sessionCredentialFromConsole": "true",
     "tlsDetails.clientProvidedHostHeader": "cloudtrail.us-east-1.amazonaws.com",
-    "userIdentity.sessionContext.sessionIssuer.userName": "{{ random_string(13, 'abcdef0123456789') }}",
-    "userIdentity.sessionContext.sessionIssuer.principalId": "{{ random_string(17, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') }}",
-    "recipientAccountId": "{{ random_int(10000000000, 99999999999) }}",
+    "userIdentity.sessionContext.sessionIssuer.userName": "{{ role_id }}",
+    "userIdentity.sessionContext.sessionIssuer.principalId": "{{ principal_id }}",
+    "recipientAccountId": "{{ account_id }}",
     "readOnly": "false",
     "tlsDetails.tlsVersion": "TLSv1.3",
     "managementEvent": "true",
-    "userIdentity.sessionContext.sessionIssuer.accountId": "{{ random_int(10000000000, 99999999999) }}",
+    "userIdentity.sessionContext.sessionIssuer.accountId": "{{ account_id }}",
     "tlsDetails.cipherSuite": "TLS_AES_128_GCM_SHA256"
   },
   "accountid": "",
@@ -113,7 +124,7 @@
   "asl_version": "",
   "observables": {
     "name": "src_endpoint.ip",
-    "value": "{{ src_endpoint.ip }}",
+    "value": "{{ source_ip }}",
     "type": "IP Address",
     "type_id": 2
   }
