@@ -7,6 +7,16 @@
 {%- set script_block_id = random_guid() -%}
 {%- set activity_id = random_guid() -%}
 {%- set event_record_id = random_int(100000, 999999) -%}
+{%- set powershell_scripts = [
+  'Get-Process | Where-Object { $_.CPU -gt 10 } | Sort-Object CPU -Descending',
+  'Get-ChildItem -Path "C:\\Windows\\System32" -Recurse -Filter "*.dll" | Select-Object Name, Length',
+  'Get-WmiObject Win32_LogicalDisk | Select-Object DeviceID, FreeSpace, Size',
+  'Invoke-Command -ComputerName ' + device.hostname + ' -ScriptBlock { Get-Service | Where-Object {$_.Status -eq "Running"} }',
+  'New-Item -Path "C:\\Temp" -Name "test.txt" -ItemType "file" -Value "Test content"',
+  'Copy-Item -Path "C:\\Windows\\System32\\config\\SAM" -Destination "C:\\Temp\\SAM_copy"',
+  'Get-ADUser -Filter * -Properties LastLogonDate | Where-Object {$_.LastLogonDate -lt (Get-Date).AddDays(-30)}'
+] -%}
+{%- set selected_script = powershell_scripts | random -%}
 <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
   <System>
     <Provider Name='Microsoft-Windows-PowerShell' Guid='{A0C1853B-5C40-4B15-8766-3CF1C58F985A}'/>
@@ -27,15 +37,7 @@
   <EventData>
     <Data Name='MessageNumber'>1</Data>
     <Data Name='MessageTotal'>1</Data>
-    <Data Name='ScriptBlockText'>{{ [
-      'Get-Process | Where-Object { $_.CPU -gt 10 } | Sort-Object CPU -Descending',
-      'Get-ChildItem -Path "C:\\Windows\\System32" -Recurse -Filter "*.dll" | Select-Object Name, Length',
-      'Get-WmiObject Win32_LogicalDisk | Select-Object DeviceID, FreeSpace, Size',
-      'Invoke-Command -ComputerName ' + device.hostname + ' -ScriptBlock { Get-Service | Where-Object {$_.Status -eq "Running"} }',
-      'New-Item -Path "C:\\Temp" -Name "test.txt" -ItemType "file" -Value "Test content"',
-      'Copy-Item -Path "C:\\Windows\\System32\\config\\SAM" -Destination "C:\\Temp\\SAM_copy"',
-      'Get-ADUser -Filter * -Properties LastLogonDate | Where-Object {$_.LastLogonDate -lt (Get-Date).AddDays(-30)}'
-    ] | random }}</Data>
+    <Data Name='ScriptBlockText'>{{ selected_script }}</Data>
     <Data Name='ScriptBlockId'>{{ script_block_id }}</Data>
     <Data Name='Path'></Data>
   </EventData>
