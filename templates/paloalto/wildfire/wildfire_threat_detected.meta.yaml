@@ -2,7 +2,7 @@ vendor: Palo Alto Networks
 product: Firewall
 data_source: WildFire Threat
 description: Palo Alto Networks WildFire malicious file detection logs in CSV format
-format: CSV
+format: Syslog
 
 # Generator settings
 is_generator: true
