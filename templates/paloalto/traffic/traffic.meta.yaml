@@ -1,4 +1,4 @@
-vendor: PaloAlto
+vendor: Palo Alto Networks
 product: Firewall
 data_source: Traffic
 description: PaloAlto traffic log for network sessions
