@@ -74,14 +74,18 @@ def get_template_manager(include_test_fixtures=False):
         include_test_fixtures: If True, also include the fixtures/templates directory
     """
     from logforge.core.templates import TemplateManager
+    import os
+    
+    # Get the project root directory (parent of the tests directory)
+    project_root = Path(__file__).parent.parent
     
     # Initialize the template manager with the template directory
-    template_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/templates")
+    template_dir = project_root / "templates"
     template_dirs = [str(template_dir)]
     
     # Optionally add test fixtures directory
     if include_test_fixtures:
-        fixtures_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/tests/fixtures/templates")
+        fixtures_dir = project_root / "tests" / "fixtures" / "templates"
         template_dirs.append(str(fixtures_dir))
     
     template_manager = TemplateManager(template_dirs)
@@ -122,8 +126,11 @@ def get_jinja_context():
 
 def test_template_syntax_validity():
     """Test all templates for basic syntax validity."""
+    # Get project root
+    project_root = Path(__file__).parent.parent
+    
     # First check our test template
-    test_fixtures_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/tests/fixtures/templates")
+    test_fixtures_dir = project_root / "tests" / "fixtures" / "templates"
     test_template_path = test_fixtures_dir / "test" / "whitespace_test.j2"
     assert test_template_path.exists(), "Test template not found in fixtures"
     
@@ -149,7 +156,7 @@ def test_template_syntax_validity():
     assert not test_errors, f"Template validation errors found in test fixtures:\n" + "\n".join(test_errors)
     
     # Now check production templates
-    template_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/templates")
+    template_dir = project_root / "templates"
     template_manager = get_template_manager()
     env = template_manager.environment
     
@@ -180,8 +187,11 @@ def test_template_syntax_validity():
 
 def test_template_whitespace_control():
     """Test that templates use proper whitespace control."""
+    # Get project root
+    project_root = Path(__file__).parent.parent
+    
     # First check our test template for whitespace control
-    test_fixtures_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/tests/fixtures/templates")
+    test_fixtures_dir = project_root / "tests" / "fixtures" / "templates"
     template_manager_with_fixtures = get_template_manager(include_test_fixtures=True)
     
     # Get the context with real functions for rendering tests
@@ -239,7 +249,7 @@ def test_template_whitespace_control():
     assert not test_errors, f"Template whitespace control issues in test template:\n" + "\n".join(test_errors)
     
     # Now check production templates
-    template_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/templates")
+    template_dir = project_root / "templates"
     template_manager = get_template_manager()
     
     # Find all production template files
@@ -302,12 +312,15 @@ def test_template_whitespace_control():
 
 def test_metadata_validity():
     """Test all metadata files for required fields and compatibility."""
+    # Get project root
+    project_root = Path(__file__).parent.parent
+    
     # First test our fixture template
-    test_fixtures_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/tests/fixtures/templates")
+    test_fixtures_dir = project_root / "tests" / "fixtures" / "templates"
     test_template_meta = test_fixtures_dir / "test" / "whitespace_test.meta.yaml"
     assert test_template_meta.exists(), "Test template metadata not found in fixtures"
     
-    config_path = Path("/Users/johnowen/GitHub Repositories/LogForge/config.yaml")
+    config_path = project_root / "config.yaml"
     
     # Load config to check time pattern references if available
     time_patterns = []
@@ -350,7 +363,7 @@ def test_metadata_validity():
     assert not test_errors, f"Metadata validation errors in test template:\n" + "\n".join(test_errors)
     
     # Now check production templates
-    template_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/templates")
+    template_dir = project_root / "templates"
     errors = []
     
     # Find all metadata files
@@ -394,8 +407,11 @@ def test_metadata_validity():
 
 def test_template_rendering():
     """Test that all templates can render successfully."""
+    # Get project root
+    project_root = Path(__file__).parent.parent
+    
     # First test our fixture template
-    test_fixtures_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/tests/fixtures/templates")
+    test_fixtures_dir = project_root / "tests" / "fixtures" / "templates"
     test_template_path = test_fixtures_dir / "test" / "whitespace_test.j2"
     assert test_template_path.exists(), "Test template not found in fixtures"
     
@@ -465,7 +481,7 @@ def test_template_rendering():
     assert not test_errors, f"Template rendering errors in test template:\n" + "\n".join(test_errors)
     
     # Now check production templates
-    template_dir = Path("/Users/johnowen/GitHub Repositories/LogForge/templates")
+    template_dir = project_root / "templates"
     template_manager = get_template_manager()
     
     errors = []
