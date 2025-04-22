@@ -1,0 +1,147 @@
+classDiagram
+    %% Core Engine
+    class Engine {
+        -generators: Dict[str, LogGenerator]
+        -outputs: List<OutputAdapter>
+        -registry: EntityRegistry
+        -scheduler: Scheduler
+        -template_manager: TemplateManager
+        +start()
+        +stop()
+        +register_generator(generator: LogGenerator)
+        +add_output(output: OutputAdapter)
+        +discover_packages()
+        +discover_generators()
+    }
+    
+    class LogGenerator {
+        <<abstract>>
+        -name: str
+        -active: bool
+        +generate(registry: EntityRegistry): str
+        +get_frequency(): float
+    }
+    
+    class TemplateBasedGenerator {
+        -template_path: str
+        -template_manager: TemplateManager
+        -metadata: Dict
+        +generate(registry: EntityRegistry): str
+        +get_frequency(): float
+    }
+    LogGenerator <|-- TemplateBasedGenerator
+    Engine o-- LogGenerator : manages
+    
+    %% Entity Registry
+    class EntityRegistry {
+        -users: Dict[str, User]
+        -devices: Dict[str, Device]
+        -services: Dict[str, Service]
+        +add_user(user: User)
+        +add_device(device: Device)
+        +add_service(service: Service)
+        +get_random_user(): User
+        +get_random_device(): Device
+        +get_random_service(): Service
+    }
+    
+    class User {
+        -username: str
+        -full_name: str
+        -email: str
+        -user_id: str
+        -department: Optional[str]
+        -title: Optional[str]
+        -is_admin: bool
+    }
+    
+    class Device {
+        -hostname: str
+        -ip_address: str
+        -mac_address: str
+        -device_id: str
+        -os_type: Optional[str]
+        -os_version: Optional[str]
+        -owner: Optional[str]
+    }
+    
+    class Service {
+        -name: str
+        -port: int
+        -protocol: str
+        -service_id: str
+        -description: Optional[str]
+        -owner: Optional[str]
+    }
+    
+    EntityRegistry o-- User : contains
+    EntityRegistry o-- Device : contains
+    EntityRegistry o-- Service : contains
+    Engine o-- EntityRegistry : uses
+    
+    %% Scheduler
+    class Scheduler {
+        +scheduleTask(task, time)
+        +cancelTask(task)
+    }
+    
+    class DayOfWeek {
+        <<enumeration>>
+        MONDAY
+        TUESDAY
+        WEDNESDAY
+        THURSDAY
+        FRIDAY
+        SATURDAY
+        SUNDAY
+    }
+    
+    class TimePattern {
+        <<dataclass>>
+        -pattern: str
+        -multiplier: float
+    }
+    
+    Engine o-- Scheduler : uses
+    
+    %% Template Manager
+    class TemplateManager {
+        +render_template(template_path: str, registry: EntityRegistry, context: Dict): str
+        +get_all_template_paths(): List[str]
+        +get_template_metadata(template_path: str): Dict
+        +random_private_ip(): str
+    }
+    Engine o-- TemplateManager : uses
+    
+    %% Output Adapters
+    class OutputAdapter {
+        <<abstract>>
+        -name: str
+        +send(log_entry: str): bool
+    }
+    
+    class FileAdapter {
+        -file_path: str
+        -mode: str
+        -max_size: int
+        -backup_count: int
+        +send(log_entry: str): bool
+    }
+    
+    class HttpAdapter {
+        -url: str
+        -method: str
+        -headers: Dict
+        -retry_count: int
+        +send(log_entry: str): bool
+    }
+    
+    class StdoutAdapter {
+        -output_stream: TextIO
+        +send(log_entry: str): bool
+    }
+    
+    OutputAdapter <|-- FileAdapter
+    OutputAdapter <|-- HttpAdapter
+    OutputAdapter <|-- StdoutAdapter
+    Engine o-- OutputAdapter : manages
