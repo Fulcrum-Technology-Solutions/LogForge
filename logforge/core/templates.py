@@ -89,7 +89,6 @@ class TemplateManager:
         env.filters['format_timestamp'] = self.format_timestamp
         env.filters['to_datetime'] = self.to_datetime
         env.filters['format_datetime'] = self.format_datetime
-        env.filters['timestamp_to_datetime'] = self.timestamp_to_datetime
         
         # Add string formatting filters
         env.filters['format'] = lambda value, fmt: format(value, fmt)
@@ -109,7 +108,6 @@ class TemplateManager:
         env.globals['format_timestamp'] = self.format_timestamp
         env.globals['to_datetime'] = self.to_datetime
         env.globals['format_datetime'] = self.format_datetime
-        env.globals['timestamp_to_datetime'] = self.timestamp_to_datetime
         
         return env
         
@@ -323,19 +321,7 @@ class TemplateManager:
             A random integer
         """
         return random.randint(min_value, max_value)
-    
-    @staticmethod
-    def timestamp_to_datetime(timestamp: float) -> datetime.datetime:
-        """Convert a Unix timestamp to a datetime object.
-    
-        Args:
-            timestamp: The Unix timestamp to convert
         
-        Returns:
-            The datetime object
-        """
-        return datetime.datetime.fromtimestamp(timestamp)
-
     @staticmethod
     def to_datetime(timestamp: str) -> datetime.datetime:
         """Convert a timestamp string to a datetime object.
