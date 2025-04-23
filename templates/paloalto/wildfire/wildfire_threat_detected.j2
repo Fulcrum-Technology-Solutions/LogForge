@@ -30,7 +30,10 @@
 {%- set file_name = file_names[threat_type] | random -%}
 {%- set random_suffix = random_string(8, 'abcdefghijklmnopqrstuvwxyz0123456789') -%}
 {%- set full_filename = file_name ~ '_' ~ random_suffix ~ '.' ~ file_ext -%}
-{%- set signature_id = 'PaloAltoNetworks:' ~ (timestamp | format_timestamp('%Y%m%d')) ~ ':' ~ '%05d' | format(random_int(1, 99999)) -%}
+{%- set random_num = random_int(1, 99999) -%}
+{%- set padded_num = '00000' ~ random_num -%}
+{%- set padded_num = padded_num[-5:] -%}
+{%- set signature_id = 'PaloAltoNetworks:' ~ (timestamp | format_timestamp('%Y%m%d')) ~ ':' ~ padded_num -%}
 {%- set file_hash = random_string(64, '0123456789abcdef') -%}
 {%- set threat_descriptions = {
     'virus': [
