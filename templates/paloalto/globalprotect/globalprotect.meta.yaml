@@ -2,7 +2,7 @@ vendor: Palo Alto Networks
 product: GlobalProtect
 data_source: VPN Authentication Logs
 description: Palo Alto GlobalProtect VPN authentication and connection logs
-format: CSV
+format: Syslog
 frequency: high
  
 # Generator settings
