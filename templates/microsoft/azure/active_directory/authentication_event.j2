@@ -7,18 +7,29 @@
 {%- set app_id = random_guid() -%}
 {%- set user_id = random_guid() -%}
 {%- set ip_address = random_public_ip() -%}
+
+{%- set operationNames = ['Sign-in activity', 'Password change', 'User registration'] -%}
+{%- set operationName = operationNames | random -%}
+{%- set categories = ['SignInLogs', 'PasswordChangeLogs', 'UserActivityLogs'] -%}
+{%- set category = categories | random -%}
+{%- set appDisplayNames = ['SignInLogs', 'PasswordChangeLogs', 'UserActivityLogs','Atlassian','Azure DevOps','AzureDataBricks','Canvas','Microsoft Office','Microsoft PowerBI','Microsoft Teams'] -%}
+{%- set appDisplayName = appDisplayNames | random -%}
+
+{%- set authMethods = ['Windows Hello for Busines', 'Password', 'MFA'] -%}
+{%- set authenticationMethod = authMethods | random -%}
+
 {
     "Level": "{{ random_int(1, 4) }}",
     "callerIpAddress": "{{ ip_address }}",
-    "category": "{{ ['SignInLogs', 'PasswordChangeLogs', 'UserActivityLogs'] | random }}",
+    "category": "{{ category }}",
     "correlationId": "{{ correlation_id }}",
     "durationMs": "{{ random_int(0, 1000) }}",
     "identity": "{{ user.username }}",
     "location": "US",
-    "operationName": "{{ ['Sign-in activity', 'Password change', 'User registration'] | random }}",
+    "operationName": "{{ operationName }}",
     "operationVersion": "1.0",
     "properties": {
-      "appDisplayName": "Windows Sign In",
+      "appDisplayName": "{{ appDisplayName }}",
       "appId": "{{ app_id }}",
       "appServicePrincipalId": "null",
       "appliedConditionalAccessPolicies": [
@@ -29,7 +40,7 @@
         {
           "RequestSequence": "1",
           "StatusSequence": "0",
-          "authenticationMethod": "Windows Hello for Business",
+          "authenticationMethod": "{{ authenticationMethod }}",
           "authenticationMethodDetail": "",
           "authenticationStepDateTime": "{{ timestamp }}",
           "authenticationStepRequirement": "Primary authentication",
