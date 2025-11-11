@@ -15,6 +15,7 @@ dist/
 .coverage
 coverage.xml
 htmlcov/
+*.log
 .DS_Store
 /.idea/
 /.vscode/

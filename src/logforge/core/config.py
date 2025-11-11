@@ -4,24 +4,53 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 DEFAULT_CONFIG_VERSION = "1.0"
-ENV_PREFIX = "LOGFORGE_"
+ENV_PREFIX = "LOGFORGE"
+ENV_SEPARATOR = "__"
+ENV_MAPPING_PREFIX = f"{ENV_PREFIX}_"
 
 
 class ConfigError(RuntimeError):
     """Raised when configuration loading fails."""
 
 
-def expand_path(path: Optional[str]) -> Optional[str]:
+def expand_path(path: Optional[str | Path]) -> Optional[str]:
     """Expand user and environment variables in a filesystem path."""
-    if not path:
-        return path
-    return os.path.expandvars(os.path.expanduser(path))
+    if path is None:
+        return None
+    return os.path.expandvars(os.path.expanduser(str(path)))
+
+
+def _expand_path_to_path(path: str | Path) -> Path:
+    expanded = expand_path(path)
+    if not expanded:
+        raise ValueError("Path expansion produced an empty result")
+    return Path(expanded).resolve()
+
+
+def default_state_dir() -> Path:
+    return _expand_path_to_path("~/.logforge")
+
+
+def default_config_path() -> Path:
+    return default_state_dir() / "config.yaml"
+
+
+def default_entities_path() -> Path:
+    return default_state_dir() / "entities.yaml"
+
+
+def default_templates_dir() -> Path:
+    return default_state_dir() / "templates"
+
+
+def default_logs_path() -> Path:
+    return default_state_dir() / "logforge.log"
 
 
 class LoggingRotationConfig(BaseModel):
@@ -31,14 +60,15 @@ class LoggingRotationConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     level: str = "INFO"
-    file: str = "~/.logforge/logforge.log"
+    file: Path = Field(default_factory=default_logs_path)
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     rotation: LoggingRotationConfig = Field(default_factory=LoggingRotationConfig)
 
     @field_validator("file", mode="before")
     @classmethod
-    def _expand_file(cls, value: str) -> str:
-        return str(expand_path(value or ""))
+    def _expand_file(cls, value: str | Path) -> Path:
+        expanded = expand_path(value or "")
+        return Path(expanded or value)
 
 
 class APIAuthConfig(BaseModel):
@@ -61,7 +91,7 @@ class EngineConfig(BaseModel):
 
 
 class EntityRegistryConfig(BaseModel):
-    path: str = "~/.logforge/entities.yaml"
+    path: Path = Field(default_factory=default_entities_path)
     auto_save: bool = True
     save_interval: int = 60
     backup_enabled: bool = True
@@ -69,8 +99,9 @@ class EntityRegistryConfig(BaseModel):
 
     @field_validator("path", mode="before")
     @classmethod
-    def _expand_path(cls, value: str) -> str:
-        return str(expand_path(value or ""))
+    def _expand_path(cls, value: str | Path) -> Path:
+        expanded = expand_path(value or "")
+        return Path(expanded or value)
 
 
 class TemplatesConfig(BaseModel):
@@ -88,6 +119,12 @@ class TemplatesConfig(BaseModel):
         return str(expand_path(value or ""))
 
 
+class TemplateSettings(BaseModel):
+    local_path: Path = Field(default_factory=default_templates_dir)
+    community_api_url: str = "https://api.logforge.io/v1"
+    auto_update_check: bool = True
+    cache_ttl: int = 3600
+
 class OutputsRetryConfig(BaseModel):
     max_attempts: int = -1
     retry_interval: int = 5
@@ -101,6 +138,14 @@ class OutputsConfig(BaseModel):
     definitions: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class GeneratorDefinition(BaseModel):
+    name: str
+    template: str
+    enabled: bool = True
+    frequency: Dict[str, Any] = Field(default_factory=dict)
+    outputs: list[str] = Field(default_factory=list)
+
+
 class LogForgeConfig(BaseModel):
     version: str = DEFAULT_CONFIG_VERSION
     engine: EngineConfig = Field(default_factory=EngineConfig)
@@ -109,18 +154,34 @@ class LogForgeConfig(BaseModel):
     templates: TemplatesConfig = Field(default_factory=TemplatesConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     outputs: OutputsConfig = Field(default_factory=OutputsConfig)
-    generators: list[dict[str, Any]] = Field(default_factory=list)
+    generators: list[GeneratorDefinition] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _post_init(self) -> "LogForgeConfig":
-        # Ensure auth key implies enabled auth
         if self.api.auth.key and not self.api.auth.enabled:
             self.api.auth.enabled = True
         return self
 
+    def dict_with_expanded_paths(self) -> Dict[str, Any]:
+        data = self.model_dump(mode="python")
+        _expand_paths_in_place(data)
+        return data
+
+
+def _expand_paths_in_place(payload: Any) -> None:
+    if isinstance(payload, dict):
+        for key, value in list(payload.items()):
+            if isinstance(value, (dict, list)):
+                _expand_paths_in_place(value)
+            elif isinstance(value, (str, Path)) and key in {"path", "file", "local_path", "default_path", "custom_path"}:
+                payload[key] = str(expand_path(value))
+    elif isinstance(payload, list):
+        for index, entry in enumerate(payload):
+            if isinstance(entry, (dict, list)):
+                _expand_paths_in_place(entry)
+
 
 def default_config_dict() -> Dict[str, Any]:
-    """Return the default configuration dictionary."""
     return {
         "version": DEFAULT_CONFIG_VERSION,
         "engine": {
@@ -209,15 +270,15 @@ def default_config_dict() -> Dict[str, Any]:
     }
 
 
+def default_config() -> LogForgeConfig:
+    """Instantiate the default configuration model."""
+    return LogForgeConfig()
+
+
 def deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge overrides into base without mutating originals."""
     result: Dict[str, Any] = dict(base)
     for key, value in overrides.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_merge(result[key], value)
         else:
             result[key] = value
@@ -225,7 +286,6 @@ def deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any
 
 
 def set_in_dict(data: Dict[str, Any], path: Iterable[str], value: Any) -> None:
-    """Set nested dict value given a dotted path."""
     current = data
     keys = list(path)
     for key in keys[:-1]:
@@ -233,6 +293,40 @@ def set_in_dict(data: Dict[str, Any], path: Iterable[str], value: Any) -> None:
             current[key] = {}
         current = current[key]
     current[keys[-1]] = value
+
+
+def _coerce_env_value(raw: str) -> Any:
+    lowered = raw.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return None
+    try:
+        if "." in raw:
+            return float(raw)
+        return int(raw)
+    except ValueError:
+        return raw
+
+
+def _parse_env(env: Mapping[str, str]) -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+    prefix = f"{ENV_PREFIX}{ENV_SEPARATOR}"
+    for key, raw in env.items():
+        if not key.startswith(prefix):
+            continue
+        parts = [part for part in key[len(prefix) :].split(ENV_SEPARATOR) if part]
+        if not parts:
+            continue
+        normalized = [part.lower() for part in parts]
+        value = _coerce_env_value(raw)
+        cursor: MutableMapping[str, Any] = result
+        for segment in normalized[:-1]:
+            if segment not in cursor or not isinstance(cursor[segment], MutableMapping):
+                cursor[segment] = {}
+            cursor = cursor[segment]  # type: ignore[assignment]
+        cursor[normalized[-1]] = value
+    return result
 
 
 ENV_MAPPING = {
@@ -256,14 +350,13 @@ ENV_MAPPING = {
 }
 
 
-def apply_env_overrides(config_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply environment variable overrides to config data."""
+def apply_env_overrides(config_data: Dict[str, Any], env: Mapping[str, str]) -> Dict[str, Any]:
     merged = dict(config_data)
     for suffix, path in ENV_MAPPING.items():
-        env_key = f"{ENV_PREFIX}{suffix}"
-        if env_key not in os.environ:
+        env_key = f"{ENV_MAPPING_PREFIX}{suffix}"
+        if env_key not in env:
             continue
-        raw_value = os.environ[env_key]
+        raw_value = env[env_key]
         if raw_value.lower() in {"true", "false"}:
             value: Any = raw_value.lower() == "true"
         else:
@@ -279,7 +372,10 @@ def apply_env_overrides(config_data: Dict[str, Any]) -> Dict[str, Any]:
                         value = raw_value
         set_in_dict(merged, path, value)
 
-    # Enable API auth automatically when key present via env
+    nested_overrides = _parse_env(env)
+    if nested_overrides:
+        merged = deep_merge(merged, nested_overrides)
+
     if merged.get("api", {}).get("auth", {}).get("key"):
         set_in_dict(merged, ("api", "auth", "enabled"), True)
 
@@ -287,7 +383,6 @@ def apply_env_overrides(config_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def load_yaml_file(path: Path) -> Dict[str, Any]:
-    """Load YAML into dict, returning empty dict if file missing."""
     if not path.exists():
         return {}
 
@@ -297,7 +392,7 @@ def load_yaml_file(path: Path) -> Dict[str, Any]:
         if not isinstance(data, dict):
             raise ConfigError(f"Configuration at {path} must be a mapping")
         return data
-    except yaml.YAMLError as exc:  # pragma: no cover - PyYAML message includes context
+    except yaml.YAMLError as exc:
         raise ConfigError(f"Failed to parse configuration {path}: {exc}") from exc
 
 
@@ -305,21 +400,25 @@ class ConfigManager:
     """High-level configuration loader and saver."""
 
     def __init__(self, config_path: Optional[Path] = None):
-        env_path = os.environ.get("LOGFORGE_CONFIG")
+        env_path = os.environ.get(f"{ENV_MAPPING_PREFIX}CONFIG")
         chosen_path: Optional[Path] = None
         if env_path:
-            chosen_path = Path(env_path).expanduser()
+            chosen_path = Path(expand_path(env_path) or env_path)
         if config_path:
-            chosen_path = Path(config_path).expanduser()
-        default_path = Path.home() / ".logforge" / "config.yaml"
+            chosen_path = Path(expand_path(config_path) or config_path)
+        default_path = default_config_path()
         self.config_path = chosen_path or default_path
 
-    def load(self, cli_overrides: Optional[Dict[str, Any]] = None) -> LogForgeConfig:
-        """Load configuration applying environment and CLI overrides."""
+    def load(
+        self,
+        cli_overrides: Optional[Dict[str, Any]] = None,
+        env: Optional[Mapping[str, str]] = None,
+    ) -> LogForgeConfig:
         merged = default_config_dict()
         file_config = load_yaml_file(self.config_path)
         merged = deep_merge(merged, file_config)
-        merged = apply_env_overrides(merged)
+        env_mapping = dict(env or os.environ)
+        merged = apply_env_overrides(merged, env_mapping)
         if cli_overrides:
             merged = deep_merge(merged, cli_overrides)
 
@@ -328,8 +427,11 @@ class ConfigManager:
         except ValidationError as exc:
             raise ConfigError(str(exc)) from exc
 
-    def save_default(self, overwrite: bool = False, overrides: Optional[Dict[str, Any]] = None) -> Path:
-        """Persist default configuration to disk."""
+    def save_default(
+        self,
+        overwrite: bool = False,
+        overrides: Optional[Dict[str, Any]] = None,
+    ) -> Path:
         config_dir = self.config_path.parent
         config_dir.mkdir(parents=True, exist_ok=True)
         if self.config_path.exists() and not overwrite:
@@ -344,7 +446,6 @@ class ConfigManager:
         return self.config_path
 
     def ensure_supporting_files(self, base_dir: Optional[Path] = None) -> None:
-        """Ensure filesystem layout for config, entities, and templates."""
         cfg = self.load()
         base = Path(base_dir).expanduser() if base_dir else Path(cfg.entity_registry.path).expanduser().parent
         base.mkdir(parents=True, exist_ok=True)
@@ -374,11 +475,41 @@ class ConfigManager:
             if not path_template:
                 continue
             example_path = path_template.replace("{generator}", "example")
-            file_path = Path(expand_path(example_path) or example_path).expanduser()
+            expanded_path = expand_path(example_path) or example_path
+            file_path = Path(expanded_path).expanduser()
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def load_config(config_path: Optional[Path] = None, cli_overrides: Optional[Dict[str, Any]] = None) -> LogForgeConfig:
-    """Convenience helper for loading configuration."""
-    manager = ConfigManager(config_path=config_path)
-    return manager.load(cli_overrides=cli_overrides)
+def load_config(
+    config_path: Optional[Path] = None,
+    overrides: Optional[Mapping[str, Any]] = None,
+    env: Optional[Mapping[str, str]] = None,
+) -> LogForgeConfig:
+    env_mapping = dict(env or os.environ)
+    effective_path = config_path
+    for key in ("LOGFORGE_CONFIG", "LOGFORGE_CONFIG_PATH"):
+        candidate = env_mapping.get(key)
+        if candidate:
+            effective_path = Path(candidate)
+            break
+
+    manager = ConfigManager(config_path=effective_path)
+    return manager.load(cli_overrides=dict(overrides or {}), env=env_mapping)
+
+
+def write_default_config(target: Optional[Path] = None, force: bool = False) -> Path:
+    manager = ConfigManager(config_path=target)
+    return manager.save_default(overwrite=force)
+
+
+def ensure_runtime_paths(base_dir: Optional[Path] = None) -> dict[str, Path]:
+    root = Path(base_dir).expanduser() if base_dir else default_state_dir()
+    templates_root = root / "templates"
+    defaults = {
+        "state": root,
+        "templates_default": templates_root / "default",
+        "templates_custom": templates_root / "custom",
+    }
+    for path in defaults.values():
+        path.mkdir(parents=True, exist_ok=True)
+    return defaults
