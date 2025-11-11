@@ -56,7 +56,7 @@
 - [x] Manual smoke test: `logforge init`
 - [x] Manual smoke test: `logforge config show`
 - [x] Verify API server starts and responds
-- [ ] Setup basic pytest structure
+- [x] Setup basic pytest structure
 
 **Acceptance Criteria**:
 - [x] `logforge init` creates default config and directory structure
@@ -73,56 +73,58 @@
 **Testing**: Lightweight TDD - write tests as building each component.
 
 ### 2.1 Entity Storage Layer (Test-First)
-- [ ] Write tests for YAML I/O operations
-- [ ] Implement YAML file loader
-- [ ] Implement YAML file saver with atomic writes
-- [ ] Add backup rotation (keep N backups)
-- [ ] Add file locking for concurrent access
+- [x] Write tests for YAML I/O operations
+- [x] Implement YAML file loader
+- [x] Implement YAML file saver with atomic writes
+- [x] Add backup rotation (keep N backups)
+- [x] Add file locking for concurrent access
 
 ### 2.2 Entity Validation (Test-First)
-- [ ] Create Pydantic models for entities
-- [ ] Write validation tests
-- [ ] Implement custom validators (IP, MAC, email)
-- [ ] Add duplicate detection logic
+- [x] Create Pydantic models for entities
+- [x] Write validation tests
+- [x] Implement custom validators (IP, MAC, email)
+- [x] Add duplicate detection logic
 
 ### 2.3 Entity Registry (Test-First)
-- [ ] Write tests for CRUD operations
-- [ ] Implement in-memory cache
-- [ ] Add random selection methods
-- [ ] Implement auto-save mechanism
-- [ ] Add entity CRUD operations
+- [x] Write tests for CRUD operations
+- [x] Implement in-memory cache
+- [x] Add random selection methods
+- [x] Implement auto-save mechanism
+- [x] Add entity CRUD operations
 
 ### 2.4 Template Functions
-- [ ] Create RegistryFunctions wrapper class
-- [ ] Implement get_random_user/device/service
-- [ ] Implement get_organization methods
-- [ ] Write tests for all functions
+- [x] Create RegistryFunctions wrapper class
+- [x] Implement get_random_user/device/service
+- [x] Implement get_organization methods
+- [x] Write tests for all functions
 
 ### 2.5 Entity API Endpoints
-- [ ] Implement GET /api/entities (summary)
-- [ ] Implement GET /api/entities/{type} (list by type)
-- [ ] Implement POST /api/entities/{type} (add)
-- [ ] Implement PUT /api/entities/{type}/{id} (update)
-- [ ] Implement DELETE /api/entities/{type}/{id} (delete)
+- [x] Implement GET /api/entities (summary)
+- [x] Implement GET /api/entities/{type} (list by type)
+- [x] Implement POST /api/entities/{type} (add)
+- [x] Implement PUT /api/entities/{type}/{id} (update)
+- [x] Implement DELETE /api/entities/{type}/{id} (delete)
+- [x] Implement import/export endpoints
 
 ### 2.6 Entity CLI Commands
-- [ ] Implement `logforge entities list`
-- [ ] Implement `logforge entities show`
-- [ ] Implement `logforge entities add`
-- [ ] Implement `logforge entities import`
-- [ ] Implement `logforge entities export`
-- [ ] Implement `logforge entities validate`
+- [x] Implement `logforge entities list`
+- [x] Implement `logforge entities show`
+- [x] Implement `logforge entities add`
+- [x] Implement `logforge entities import`
+- [x] Implement `logforge entities export`
+- [x] Implement `logforge entities validate`
+- [x] Implement `logforge entities delete`
 
 ### 2.7 Integration Tests
-- [ ] Test full workflow: add → validate → export → import
-- [ ] Test API CRUD operations
-- [ ] Test backup recovery scenario
+- [x] Test full workflow: add → validate → export → import
+- [x] Test API CRUD operations
+- [x] Test backup recovery scenario
 
 **Acceptance Criteria**:
-- [ ] Entities can be added/imported/exported via CLI
-- [ ] Registry functions work correctly
-- [ ] Entity validation catches errors
-- [ ] API endpoints return proper entity data
+- [x] Entities can be added/imported/exported via CLI
+- [x] Registry functions work correctly
+- [x] Entity validation catches errors
+- [x] API endpoints return proper entity data
 
 ---
 
@@ -449,14 +451,14 @@
 
 | Phase | Status | Progress | Completion Date |
 |-------|--------|----------|-----------------|
-| Phase 1 | 🔄 In Progress | 80% | - |
-| Phase 2 | ⏳ Pending | 0% | - |
+| Phase 1 | ✅ Complete | 100% | 2025-11-11 |
+| Phase 2 | ✅ Complete | 100% | 2025-11-11 |
 | Phase 3 | ⏳ Pending | 0% | - |
 | Phase 4 | ⏳ Pending | 0% | - |
 | Phase 5 | ⏳ Pending | 0% | - |
 | Phase 6 | ⏳ Pending | 0% | - |
 
-**Overall Progress**: 0/6 phases complete (0%)
+**Overall Progress**: 2/6 phases complete (33%)
 
 ---
 
@@ -473,3 +475,5 @@
 - Using FastAPI for API server
 - Using Pydantic for validation
 - Added initial pytest scaffolding (config + CLI) and executed smoke suite (`pytest`, CLI commands, API health check)
+- Completed Phase 2 entity registry: file-backed registry with validation, FastAPI CRUD/import/export endpoints, CLI entity group, and coverage via unit + integration tests
+- Added `email-validator` dependency to support `EmailStr` validation in entity models

@@ -20,6 +20,7 @@ from logforge.core.config import (
 )
 from logforge.utils.logging import configure_logging
 from .utils import APIClient, APIClientError, echo_api_error, render_output
+from .entities import entities as entities_cmd
 
 
 def _write_entities_file(path: Path, *, force: bool = False) -> Path:
@@ -273,3 +274,6 @@ def health(ctx: click.Context) -> None:
         echo_api_error(exc)
         raise click.Abort()
     click.echo(render_output(payload, "json"))
+
+
+cli.add_command(entities_cmd)

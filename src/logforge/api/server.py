@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from logforge.api.auth import APIKeyAuth, ensure_api_key
 from logforge.api.endpoints.system import router as system_router
+from logforge.api.endpoints.entities import router as entities_router
 from logforge.core.config import ApiAuthSettings, LogForgeConfig
+from logforge.entities.registry import EntityRegistry
 from logforge.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +49,7 @@ def create_app(config: LogForgeConfig) -> FastAPI:
     )
 
     app.include_router(system_router)
+    app.include_router(entities_router)
 
     auth_guard = APIKeyAuth(auth_settings)
 
@@ -55,14 +58,17 @@ def create_app(config: LogForgeConfig) -> FastAPI:
     app.state.auth_guard = lambda token: auth_guard(authorization=token)
     app.state.system_provider = _system_snapshot
     app.state.auth_settings = auth_settings
+    app.state.entity_registry = EntityRegistry.from_config(config)
 
     @app.on_event("startup")
     async def _startup() -> None:
         app.state.start_time = time.time()
+        app.state.entity_registry.load()
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
-        ...
+        if config.entity_registry.auto_save:
+            app.state.entity_registry.save()
 
     return app
 

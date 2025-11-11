@@ -29,6 +29,9 @@ logforge config validate
 # query API via CLI
 logforge health
 logforge status --output table
+logforge entities list
+logforge entities add users --file ./samples/user.yaml
+logforge entities export --file export.yaml
 ```
 
 ### Configuration
@@ -48,6 +51,7 @@ curl http://127.0.0.1:8080/api/status
 
 # using the CLI with API key
 logforge --api-url http://127.0.0.1:8080 --api-key <token> status --output json
+logforge --api-key <token> entities list --type users
 ```
 
 Set an API key by toggling `api.auth.enabled` in the config or export `LOGFORGE__API__AUTH__ENABLED=true`.
