@@ -53,16 +53,16 @@
 - [x] Add health/status API commands
 
 ### 1.6 Testing & Acceptance
-- [ ] Manual smoke test: `logforge init`
-- [ ] Manual smoke test: `logforge config show`
-- [ ] Verify API server starts and responds
+- [x] Manual smoke test: `logforge init`
+- [x] Manual smoke test: `logforge config show`
+- [x] Verify API server starts and responds
 - [ ] Setup basic pytest structure
 
 **Acceptance Criteria**:
 - [x] `logforge init` creates default config and directory structure
 - [x] `logforge config show` displays current configuration
-- [ ] API server starts and responds to health checks
-- [ ] Application logging works correctly
+- [x] API server starts and responds to health checks
+- [x] Application logging works correctly
 
 ---
 

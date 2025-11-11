@@ -17,10 +17,10 @@ _SIZE_UNITS = {
 
 def _parse_size(value: str) -> int:
     raw = value.strip().lower()
-    for suffix, multiplier in _SIZE_UNITS.items():
+    for suffix in sorted(_SIZE_UNITS.keys(), key=len, reverse=True):
         if raw.endswith(suffix):
             number = raw[: -len(suffix)].strip()
-            return int(float(number) * multiplier)
+            return int(float(number) * _SIZE_UNITS[suffix])
     return int(float(raw))
 
 
