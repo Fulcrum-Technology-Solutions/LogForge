@@ -1,0 +1,10 @@
+{
+  "event_type": "security",
+  "event_id": {{ random_int(4624, 4625) }},
+  "machine_name": "{{ random_choice(['WS-001', 'WS-002', 'DC-01']) }}",
+  "account": "{{ registry.get_random_user().username if registry.get_random_user() else 'svc_system' }}",
+  "timestamp": "{{ now().isoformat() }}",
+  "source_ip": "{{ random_choice(['10.0.5.24', '192.168.10.50', '172.16.1.32']) }}",
+  "message": "{{ random_choice(['Successful logon', 'Bad password attempt', 'Account locked']) }}"
+}
+

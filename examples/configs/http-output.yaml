@@ -1,0 +1,46 @@
+version: "1.0"
+
+engine:
+  max_generators: 4
+  log_level: INFO
+
+api:
+  host: 0.0.0.0
+  port: 8080
+  auth:
+    enabled: false
+
+entity_registry:
+  path: /data/logforge/entities.yaml
+  auto_save: true
+
+templates:
+  local_path: /data/logforge/templates
+  default_path: /data/logforge/templates/default
+  custom_path: /data/logforge/templates/custom
+
+outputs:
+  buffer_size: 5000
+  retry:
+    max_attempts: 5
+    retry_interval: 5
+    backoff_multiplier: 2.0
+    max_backoff: 120
+  definitions:
+    - name: http_splunk
+      type: http
+      url: https://splunk.example.com:8088/services/collector
+      headers:
+        Authorization: "Splunk ${SPLUNK_HEC_TOKEN}"
+        Content-Type: "application/json"
+      timeout: 10.0
+      batch: true
+
+generators:
+  - name: splunk_demo
+    template: examples/json/app_event
+    frequency:
+      base_rate: 25
+    outputs:
+      - http_splunk
+

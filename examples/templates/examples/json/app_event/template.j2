@@ -1,0 +1,10 @@
+{
+  "service": "{{ random_choice(['billing', 'orders', 'identity']) }}",
+  "level": "{{ random_choice(['INFO', 'WARN', 'ERROR']) }}",
+  "event_id": "{{ fake.uuid4() }}",
+  "message": "{{ random_choice(['request completed', 'retry queued', 'dependency timeout']) }}",
+  "duration_ms": {{ random_int(25, 450) }},
+  "user": "{{ registry.get_random_user().username if registry.get_random_user() else 'anonymous' }}",
+  "timestamp": "{{ now().isoformat() }}"
+}
+

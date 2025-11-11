@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  logforge:
+    build: .
+    image: logforge:latest
+    ports:
+      - "8080:8080"
+    environment:
+      LOGFORGE_CONFIG: /data/logforge/config.yaml
+    volumes:
+      - logforge_state:/data/logforge
+      - ./examples/configs/simple-config.yaml:/data/logforge/config.yaml:ro
+      - ./examples/configs/entities-example.yaml:/data/logforge/entities.yaml
+      - ./examples/templates:/data/logforge/templates/custom:ro
+      - ./logs:/data/logforge/logs
+    restart: unless-stopped
+
+volumes:
+  logforge_state:
+

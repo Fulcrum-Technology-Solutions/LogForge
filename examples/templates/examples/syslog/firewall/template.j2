@@ -1,0 +1,2 @@
+<{{ now().strftime('%b %d %H:%M:%S') }}> {{ random_choice(['fw01', 'fw02']) }} {{ random_choice(['kernel', 'firewalld']) }}: {{ random_choice(['ACCEPT', 'DROP']) }} src={{ random_choice(['10.0.0.12', '172.16.2.55', '192.168.50.4']) }} dst={{ random_choice(['192.168.1.101', '10.1.3.45']) }} proto={{ random_choice(['TCP', 'UDP']) }} spt={{ random_int(1024, 65535) }} dpt={{ random_choice([22, 80, 443, 3389]) }} msg="{{ random_choice(['allowed connection', 'policy drop']) }}" user={{ registry.get_random_user().username if registry.get_random_user() else 'unknown' }}
+

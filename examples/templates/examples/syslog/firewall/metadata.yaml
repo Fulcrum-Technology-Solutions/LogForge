@@ -1,0 +1,12 @@
+id: examples/syslog/firewall
+name: Syslog Firewall Event
+description: Classic RFC3164 firewall message
+vendor: ExampleFirewall
+product: EdgeGuard
+version: "1.0.0"
+format: text
+tags:
+  - syslog
+  - firewall
+  - network
+

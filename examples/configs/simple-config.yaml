@@ -1,0 +1,37 @@
+version: "1.0"
+
+engine:
+  max_generators: 5
+  log_level: INFO
+
+api:
+  host: 0.0.0.0
+  port: 8080
+  auth:
+    enabled: false
+
+entity_registry:
+  path: /data/logforge/entities.yaml
+  auto_save: true
+
+templates:
+  local_path: /data/logforge/templates
+  default_path: /data/logforge/templates/default
+  custom_path: /data/logforge/templates/custom
+
+outputs:
+  buffer_size: 10000
+  definitions:
+    - name: console_json
+      type: console
+      format: json
+
+generators:
+  - name: demo_windows
+    template: examples/windows_eventlog/security
+    enabled: true
+    frequency:
+      base_rate: 8
+    outputs:
+      - console_json
+

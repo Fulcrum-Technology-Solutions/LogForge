@@ -1,0 +1,40 @@
+organization:
+  name: Example Corporation
+  domain: example.com
+  contacts:
+    admin: admin@example.com
+    security: security@example.com
+users:
+  - username: jsmith
+    email: jsmith@example.com
+    full_name: John Smith
+    department: Engineering
+    role: Senior Developer
+  - username: mjones
+    email: mjones@example.com
+    full_name: Megan Jones
+    department: Security
+    role: Analyst
+devices:
+  - hostname: ws-001
+    ip_address: 192.168.10.21
+    mac_address: "00:11:22:33:44:55"
+    os: Windows 11
+    owner: jsmith
+  - hostname: srv-api-01
+    ip_address: 10.0.5.12
+    mac_address: "AA:BB:CC:DD:EE:FF"
+    os: Ubuntu 22.04
+    owner: mjones
+services:
+  - name: customer_api
+    description: Public customer API endpoint
+    url: https://api.example.com
+    protocol: https
+    port: 443
+  - name: internal_auth
+    description: Internal authentication service
+    url: https://auth.internal.example.com
+    protocol: https
+    port: 8443
+

@@ -6,6 +6,7 @@ from logforge.core.config import LogForgeConfig
 from logforge.outputs.base import OutputHandler
 from logforge.outputs.console import ConsoleOutputHandler
 from logforge.outputs.file import FileOutputHandler
+from logforge.outputs.http import HTTPOutputHandler
 
 
 class OutputManager:
@@ -34,4 +35,15 @@ class OutputManager:
                 return None
             max_bytes = definition.get("rotation", {}).get("max_bytes")
             return FileOutputHandler(path_template=path, generator_name=generator_name, max_bytes=max_bytes)
+        if output_type == "http":
+            url = definition.get("url")
+            if not url:
+                return None
+            return HTTPOutputHandler(
+                url=url,
+                method=definition.get("method", "POST"),
+                headers=definition.get("headers"),
+                timeout=definition.get("timeout", 5.0),
+                batch=definition.get("batch", False),
+            )
         return None

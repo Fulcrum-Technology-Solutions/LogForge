@@ -1,0 +1,12 @@
+id: examples/windows_eventlog/security
+name: Windows Security Event
+description: Synthetic Windows Event Log security message
+vendor: Microsoft
+product: Windows
+version: "1.0.0"
+format: json
+tags:
+  - windows
+  - security
+  - eventlog
+

@@ -74,7 +74,7 @@ def _write_entities_file(path: Path, *, force: bool = False) -> Path:
     return path
 
 
-@click.group()
+@click.group(help="Command-line interface for LogForge synthetic log generation.")
 @click.version_option(__version__)
 @click.option(
     "--config",
@@ -172,7 +172,7 @@ def _resolve_config_with_overrides(ctx: click.Context, overrides: Optional[dict]
     return load_config(config_path=path_override, overrides=overrides or {})
 
 
-@cli.group()
+@cli.group(help="Inspect and update configuration values.")
 @click.pass_context
 def config(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
@@ -208,7 +208,7 @@ def config_validate(ctx: click.Context) -> None:
     click.echo("Configuration is valid.")
 
 
-@cli.group()
+@cli.group(help="API server lifecycle helpers.")
 @click.pass_context
 def api(ctx: click.Context) -> None:
     ctx.ensure_object(dict)

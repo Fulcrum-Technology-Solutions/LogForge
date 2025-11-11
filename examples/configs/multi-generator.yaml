@@ -1,0 +1,62 @@
+version: "1.0"
+
+engine:
+  max_generators: 10
+  thread_pool_size: 4
+  log_level: INFO
+
+api:
+  host: 0.0.0.0
+  port: 8080
+  auth:
+    enabled: false
+
+entity_registry:
+  path: /data/logforge/entities.yaml
+  auto_save: true
+  backup_enabled: true
+  backup_count: 5
+
+templates:
+  local_path: /data/logforge/templates
+  default_path: /data/logforge/templates/default
+  custom_path: /data/logforge/templates/custom
+
+outputs:
+  buffer_size: 5000
+  retry:
+    max_attempts: -1
+    retry_interval: 5
+    backoff_multiplier: 2.0
+    max_backoff: 300
+  definitions:
+    - name: console_table
+      type: console
+      format: text
+    - name: generator_log
+      type: file
+      path: /data/logforge/logs/{generator}.log
+      rotation:
+        max_bytes: 10485760
+
+generators:
+  - name: windows_security
+    template: examples/windows_eventlog/security
+    enabled: true
+    frequency:
+      base_rate: 15
+      variation:
+        - days: [1, 2, 3, 4, 5]
+          time: "09:00-17:00"
+          multiplier: 2.0
+    outputs:
+      - generator_log
+      - console_table
+  - name: json_app_events
+    template: examples/json/app_event
+    enabled: true
+    frequency:
+      base_rate: 30
+    outputs:
+      - console_table
+

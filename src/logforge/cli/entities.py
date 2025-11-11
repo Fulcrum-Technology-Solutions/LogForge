@@ -23,18 +23,19 @@ def _load_payload(path: Path) -> Dict:
         raise click.ClickException(f"Failed to parse {path}: {exc}") from exc
 
 
-@click.group()
+@click.group(help="Manage the entity registry via the API.")
 @click.pass_context
 def entities(ctx: click.Context) -> None:
     """Entity registry commands."""
     ctx.ensure_object(dict)
 
 
-@entities.command("list")
+@entities.command("list", help="List entities or provide summary counts.")
 @click.option("--type", "entity_type", type=ENTITY_TYPES, default=None)
 @click.option("--output", type=click.Choice(["table", "json"], case_sensitive=False), default="table")
 @click.pass_context
 def list_entities(ctx: click.Context, entity_type: Optional[str], output: str) -> None:
+    """Display entities or summary counts in the requested format."""
     client: APIClient = ctx.obj["api_client"]
     try:
         if entity_type:
@@ -56,12 +57,13 @@ def list_entities(ctx: click.Context, entity_type: Optional[str], output: str) -
     click.echo(render_output(data, output, columns=columns if output.lower() == "table" else None))
 
 
-@entities.command("show")
+@entities.command("show", help="Show a single entity by type and identifier.")
 @click.argument("entity_type", type=ENTITY_TYPES)
 @click.argument("identifier", type=str)
 @click.option("--output", type=click.Choice(["yaml", "json"], case_sensitive=False), default="yaml")
 @click.pass_context
 def show_entity(ctx: click.Context, entity_type: str, identifier: str, output: str) -> None:
+    """Show a specific entity in YAML or JSON format."""
     client: APIClient = ctx.obj["api_client"]
     try:
         payload = client.get(f"/api/entities/{entity_type.lower()}/{identifier}")
@@ -74,11 +76,12 @@ def show_entity(ctx: click.Context, entity_type: str, identifier: str, output: s
         click.echo(yaml.safe_dump(payload, sort_keys=False))
 
 
-@entities.command("add")
+@entities.command("add", help="Add a new entity from a YAML or JSON file.")
 @click.argument("entity_type", type=ENTITY_TYPES)
 @click.option("--file", "file_path", type=click.Path(path_type=Path), required=True)
 @click.pass_context
 def add_entity(ctx: click.Context, entity_type: str, file_path: Path) -> None:
+    """Create a new entity from the provided payload file."""
     payload = _load_payload(file_path)
     client: APIClient = ctx.obj["api_client"]
     try:
@@ -89,11 +92,12 @@ def add_entity(ctx: click.Context, entity_type: str, file_path: Path) -> None:
     click.echo(yaml.safe_dump(created, sort_keys=False))
 
 
-@entities.command("delete")
+@entities.command("delete", help="Delete an entity by identifier.")
 @click.argument("entity_type", type=ENTITY_TYPES)
 @click.argument("identifier", type=str)
 @click.pass_context
 def delete_entity(ctx: click.Context, entity_type: str, identifier: str) -> None:
+    """Delete an entity from the registry."""
     client: APIClient = ctx.obj["api_client"]
     try:
         client.request("DELETE", f"/api/entities/{entity_type.lower()}/{identifier}")
@@ -103,11 +107,12 @@ def delete_entity(ctx: click.Context, entity_type: str, identifier: str) -> None
     click.echo(f"Deleted {entity_type} entry '{identifier}'.")
 
 
-@entities.command("import")
+@entities.command("import", help="Import entities from a bundle file.")
 @click.option("--file", "file_path", type=click.Path(path_type=Path), required=True)
 @click.option("--replace", is_flag=True, help="Replace existing registry instead of merging.")
 @click.pass_context
 def import_entities(ctx: click.Context, file_path: Path, replace: bool) -> None:
+    """Import an entity bundle, optionally replacing existing data."""
     payload = _load_payload(file_path)
     client: APIClient = ctx.obj["api_client"]
     try:
@@ -122,10 +127,11 @@ def import_entities(ctx: click.Context, file_path: Path, replace: bool) -> None:
     click.echo(yaml.safe_dump(result, sort_keys=False))
 
 
-@entities.command("export")
+@entities.command("export", help="Export the entity registry to stdout or a file.")
 @click.option("--file", "file_path", type=click.Path(path_type=Path), default=None)
 @click.pass_context
 def export_entities(ctx: click.Context, file_path: Optional[Path]) -> None:
+    """Export the entity registry to stdout or a file."""
     client: APIClient = ctx.obj["api_client"]
     try:
         payload = client.get("/api/entities/export")
@@ -140,9 +146,10 @@ def export_entities(ctx: click.Context, file_path: Optional[Path]) -> None:
         click.echo(output)
 
 
-@entities.command("validate")
+@entities.command("validate", help="Validate an entity bundle file.")
 @click.option("--file", "file_path", type=click.Path(path_type=Path), required=True)
 def validate_entities(file_path: Path) -> None:
+    """Validate the entity bundle for schema and duplication issues."""
     payload = _load_payload(file_path)
     try:
         validator.validate_bundle(payload)

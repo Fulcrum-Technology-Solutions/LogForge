@@ -1,0 +1,12 @@
+id: examples/json/app_event
+name: JSON Application Event
+description: Generic JSON event for application monitoring
+vendor: ExampleCorp
+product: Customer Portal
+version: "1.0.0"
+format: json
+tags:
+  - json
+  - application
+  - monitoring
+

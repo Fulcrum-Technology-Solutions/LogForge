@@ -365,77 +365,77 @@
 
 ## Phase 6: Deployment + Documentation (Week 10)
 
-**Status**: ⏳ Pending  
+**Status**: 🔄 In Progress  
 **Goal**: Docker, documentation, example configs, smoke tests.  
 **Testing**: Manual + smoke tests.
 
 ### 6.1 Dockerfile
-- [ ] Create multi-stage Dockerfile
-- [ ] Add non-root user
-- [ ] Add health check
-- [ ] Configure volumes
-- [ ] Smoke test build and run
+- [x] Create multi-stage Dockerfile
+- [x] Add non-root user
+- [x] Add health check
+- [x] Configure volumes
+- [x] Smoke test build and run
 
 ### 6.2 Docker Compose
-- [ ] Create docker-compose.yml
-- [ ] Add volume mounts
-- [ ] Configure environment variables
-- [ ] Add health checks
+- [x] Create docker-compose.yml
+- [x] Add volume mounts
+- [x] Configure environment variables
+- [x] Add health checks
 
 ### 6.3 Example Configurations
-- [ ] Create simple-config.yaml
-- [ ] Create multi-generator.yaml
-- [ ] Create http-output.yaml
-- [ ] Create entities-example.yaml
+- [x] Create simple-config.yaml
+- [x] Create multi-generator.yaml
+- [x] Create http-output.yaml
+- [x] Create entities-example.yaml
 
 ### 6.4 Example Templates
-- [ ] Add Windows Event Log example
-- [ ] Add JSON log example
-- [ ] Add Syslog format example
+- [x] Add Windows Event Log example
+- [x] Add JSON log example
+- [x] Add Syslog format example
 
 ### 6.5 README.md
-- [ ] Write Quick Start section
-- [ ] Write Installation section
-- [ ] Write Configuration section
-- [ ] Write Usage section
-- [ ] Write Templates section
-- [ ] Write Development section
-- [ ] Add License section
+- [x] Write Quick Start section
+- [x] Write Installation section
+- [x] Write Configuration section
+- [x] Write Usage section
+- [x] Write Templates section
+- [x] Write Development section
+- [x] Add License section
 
 ### 6.6 API Documentation
-- [ ] Enable FastAPI auto-docs
-- [ ] Verify OpenAPI schema
-- [ ] Test /api/docs endpoint
-- [ ] Test /api/redoc endpoint
+- [x] Enable FastAPI auto-docs
+- [x] Verify OpenAPI schema
+- [x] Test /api/docs endpoint
+- [x] Test /api/redoc endpoint
 
 ### 6.7 Template Development Guide
-- [ ] Create docs/template-guide.md
-- [ ] Document template structure
-- [ ] Document metadata format
-- [ ] Document available functions
-- [ ] Add example walkthrough
+- [x] Create docs/template-guide.md
+- [x] Document template structure
+- [x] Document metadata format
+- [x] Document available functions
+- [x] Add example walkthrough
 
 ### 6.8 CLI Help Text
-- [ ] Add help text to all commands
-- [ ] Test all --help flags
+- [x] Add help text to all commands
+- [x] Test all --help flags
 
 ### 6.9 Smoke Test Checklist
-- [ ] Fresh install: pip install -e .
-- [ ] Init: logforge init
-- [ ] Add entities
-- [ ] List templates
-- [ ] Start generator
-- [ ] Check status
-- [ ] View logs
-- [ ] API health check
-- [ ] API docs access
-- [ ] Stop generator
-- [ ] Docker build and run
+- [x] Fresh install: pip install -e .
+- [x] Init: logforge init
+- [x] Add entities
+- [x] List templates
+- [x] Start generator
+- [x] Check status
+- [x] View logs
+- [x] API health check
+- [x] API docs access
+- [x] Stop generator
+- [x] Docker build and run
 
 ### 6.10 Version and Release Prep
-- [ ] Set version in __init__.py
-- [ ] Verify pyproject.toml complete
-- [ ] Create CHANGELOG.md
+- [x] Set version in __init__.py
+- [x] Verify pyproject.toml complete
+- [x] Create CHANGELOG.md
 - [ ] Tag repo: git tag v1.0.0
 
 **Acceptance Criteria**:
