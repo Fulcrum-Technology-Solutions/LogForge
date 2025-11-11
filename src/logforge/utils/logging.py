@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import logging
-import logging.config
-import logging.handlers
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Optional
 
 from logforge.core.config import LoggingConfig
 
-LEVELS = {
-    "CRITICAL": logging.CRITICAL,
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG,
+_SIZE_UNITS = {
+    "b": 1,
+    "kb": 1024,
+    "mb": 1024**2,
+    "gb": 1024**3,
+    "tb": 1024**4,
 }
 
 
@@ -22,57 +22,55 @@ def parse_size(value: str) -> int:
     """Convert human readable size strings to bytes."""
     if not value:
         return 0
-    normalized = value.strip().upper()
-    multiplier = 1
-    if normalized.endswith("KB"):
-        multiplier = 1024
-        normalized = normalized[:-2]
-    elif normalized.endswith("MB"):
-        multiplier = 1024**2
-        normalized = normalized[:-2]
-    elif normalized.endswith("GB"):
-        multiplier = 1024**3
-        normalized = normalized[:-2]
-    elif normalized.endswith("B"):
-        normalized = normalized[:-1]
+    raw = value.strip().lower()
+    for suffix in sorted(_SIZE_UNITS.keys(), key=len, reverse=True):
+        if raw.endswith(suffix):
+            number = raw[: -len(suffix)].strip() or "0"
+            try:
+                return int(float(number) * _SIZE_UNITS[suffix])
+            except ValueError:  # pragma: no cover
+                return 0
     try:
-        return int(float(normalized) * multiplier)
-    except ValueError:  # pragma: no cover - defensive
+        return int(float(raw))
+    except ValueError:  # pragma: no cover
         return 0
 
 
-def configure_logging(config: LoggingConfig) -> None:
-    """Configure root logging according to config."""
-    level = LEVELS.get(config.level.upper(), logging.INFO)
+def configure_logging(settings: Optional[LoggingConfig] = None, *, enable_console: bool = True) -> None:
+    """Configure root logging according to the provided settings."""
+    config = settings or LoggingConfig()
+    log_level = getattr(logging, config.level.upper(), logging.INFO)
+
+    logging.captureWarnings(True)
+    root = logging.getLogger()
+    root.setLevel(log_level)
+
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+
+    formatter = logging.Formatter(config.format)
+
     log_path = Path(config.file).expanduser()
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    max_bytes = parse_size(config.rotation.max_size)
+    max_bytes = parse_size(config.rotation.max_size) or 10 * 1024 * 1024
+    file_handler = RotatingFileHandler(
+        filename=str(log_path),
+        maxBytes=max_bytes,
+        backupCount=config.rotation.backup_count,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(log_level)
+    root.addHandler(file_handler)
 
-    logging_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "default": {"format": config.format},
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "level": level,
-                "formatter": "default",
-                "stream": "ext://sys.stdout",
-            },
-            "file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": level,
-                "formatter": "default",
-                "filename": str(log_path),
-                "maxBytes": max_bytes or 10 * 1024 * 1024,
-                "backupCount": config.rotation.backup_count,
-                "encoding": "utf-8",
-            },
-        },
-        "root": {"level": level, "handlers": ["console", "file"]},
-    }
+    if enable_console:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(log_level)
+        root.addHandler(console_handler)
 
-    logging.config.dictConfig(logging_config)
+
+def get_logger(name: str) -> logging.Logger:
+    """Return a logger instance with the configured hierarchy."""
+    return logging.getLogger(name)

@@ -1,50 +1,75 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from logforge.cli.main import cli
+from logforge.core.config import write_default_config
 
 
-def test_cli_init_creates_structure(tmp_path):
+def _bootstrap_config(tmp_path: Path) -> Path:
+    config_path = tmp_path / "config.yaml"
+    write_default_config(config_path, force=True)
+    return config_path
+
+
+def test_cli_init_creates_structure(tmp_path: Path) -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["init", "--path", str(tmp_path)])
 
     assert result.exit_code == 0, result.output
-    config_path = tmp_path / "config.yaml"
-    assert config_path.exists()
+    assert (tmp_path / "config.yaml").exists()
+    assert (tmp_path / "entities.yaml").exists()
     assert (tmp_path / "templates" / "default").exists()
     assert (tmp_path / "templates" / "custom").exists()
-    assert (tmp_path / "entities.yaml").exists()
 
 
-def test_cli_config_show_json(tmp_path):
+def test_cli_config_show_outputs_json(tmp_path: Path) -> None:
+    config_path = _bootstrap_config(tmp_path)
     runner = CliRunner()
-    runner.invoke(cli, ["init", "--path", str(tmp_path)])
-    config_path = tmp_path / "config.yaml"
 
-    result = runner.invoke(
-        cli,
-        ["--config", str(config_path), "config", "show", "--output", "json"],
-    )
+    result = runner.invoke(cli, ["--config", str(config_path), "config", "show", "--output", "json"])
+
     assert result.exit_code == 0, result.output
-    assert '"api"' in result.output
+    payload = json.loads(result.output)
+    assert payload["version"] == "1.0"
+    assert payload["api"]["host"] == "127.0.0.1"
 
 
-def test_cli_status_json(tmp_path):
+def test_cli_config_validate(tmp_path: Path) -> None:
+    config_path = _bootstrap_config(tmp_path)
     runner = CliRunner()
-    runner.invoke(cli, ["init", "--path", str(tmp_path)])
-    config_path = tmp_path / "config.yaml"
 
+    result = runner.invoke(cli, ["--config", str(config_path), "config", "validate"])
+
+    assert result.exit_code == 0
+    assert "Configuration is valid." in result.output
+
+
+def test_cli_status_json(tmp_path: Path) -> None:
+    _bootstrap_config(tmp_path)
+    runner = CliRunner()
     fake_response = {"uptime": 1, "version": "1.0.0", "generators": [], "system": {}}
 
     with patch("logforge.cli.main.APIClient") as mock_client_cls:
-        mock_client = mock_client_cls.return_value.__enter__.return_value
-        mock_client.json_request.return_value = fake_response
+        mock_client = mock_client_cls.return_value
+        mock_client.get.return_value = fake_response
 
-        result = runner.invoke(
-            cli,
-            ["--config", str(config_path), "status", "--output", "json"],
-        )
+        result = runner.invoke(cli, ["status", "--output", "json"])
 
     assert result.exit_code == 0, result.output
-    assert '"uptime": 1' in result.output
+    payload = json.loads(result.output)
+    assert payload["uptime"] == 1
+
+
+def test_cli_health_handles_connection_error(tmp_path: Path) -> None:
+    _bootstrap_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["--api-url", "http://127.0.0.1:65535", "health"])
+
+    assert result.exit_code != 0
+    assert "Failed to reach API" in result.output

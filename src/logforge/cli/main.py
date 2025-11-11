@@ -7,220 +7,283 @@ from pathlib import Path
 from typing import Optional
 
 import click
-import httpx
+import yaml
+from pydantic import ValidationError
 
+from logforge import __version__
 from logforge.api.server import APIServer
-from logforge.core.config import ConfigError, ConfigManager, LogForgeConfig
+from logforge.core.config import (
+    LogForgeConfig,
+    default_config_path,
+    default_entities_path,
+    default_templates_dir,
+    ensure_runtime_paths,
+    load_config,
+    write_default_config,
+)
 from logforge.utils.logging import configure_logging
-
-from .http import APIClient
-from .output import echo_output, render_table
-
-CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
-
-
-class CLIContext:
-    """Store shared CLI state."""
-
-    def __init__(self, config_path: Optional[str] = None):
-        self.config_path = Path(config_path).expanduser() if config_path else None
-        self.manager = ConfigManager(config_path=self.config_path)
-        self._config: Optional[LogForgeConfig] = None
-
-    def ensure_config(self) -> LogForgeConfig:
-        if self._config is None:
-            self._config = self.manager.load()
-        return self._config
-
-    def set_config_path(self, path: Path) -> None:
-        self.config_path = path.expanduser()
-        self.manager = ConfigManager(config_path=self.config_path)
-        self._config = None
+from .utils import APIClient, APIClientError, echo_api_error, render_output
+from .entities import entities as entities_cmd
+from .templates import templates as templates_cmd
+from .generators import generators as generators_cmd
 
 
-def handle_errors(func):
-    """Convert internal exceptions to Click exceptions."""
+def _write_entities_file(path: Path, *, force: bool = False) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    default_payload = {
+        "organization": {
+            "name": "Example Corporation",
+            "domain": "example.com",
+            "contacts": {
+                "admin": "admin@example.com",
+                "security": "security@example.com",
+            },
+        },
+        "users": [
+            {
+                "username": "jsmith",
+                "email": "jsmith@example.com",
+                "full_name": "John Smith",
+                "department": "Engineering",
+                "role": "Senior Developer",
+            }
+        ],
+        "devices": [
+            {
+                "hostname": "ws-001",
+                "ip_address": "192.168.1.10",
+                "mac_address": "00:11:22:33:44:55",
+                "os": "Windows 11",
+                "owner": "jsmith",
+            }
+        ],
+        "services": [
+            {
+                "name": "web_app",
+                "description": "Primary web application",
+                "url": "https://app.example.com",
+                "protocol": "https",
+                "port": 443,
+            }
+        ],
+    }
+    if path.exists() and not force:
+        raise FileExistsError(f"Entities file already exists at {path}")
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(default_payload, handle, sort_keys=False)
+    return path
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ConfigError as exc:
-            raise click.ClickException(str(exc)) from exc
-        except httpx.HTTPError as exc:
-            raise click.ClickException(f"API request failed: {exc}") from exc
-        except Exception as exc:  # pragma: no cover - safety net
-            raise click.ClickException(str(exc)) from exc
 
-    return wrapper
-
-
-pass_context = click.make_pass_decorator(CLIContext, ensure=True)
-
-
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group()
+@click.version_option(__version__)
 @click.option(
     "--config",
     "config_path",
-    type=click.Path(dir_okay=False, path_type=Path),
-    help="Path to configuration file.",
+    type=click.Path(path_type=Path, dir_okay=False),
+    default=None,
+    help="Override configuration path.",
 )
-@pass_context
-def cli(ctx: CLIContext, config_path: Optional[Path]) -> None:
-    """LogForge command line interface."""
-    if config_path:
-        ctx.set_config_path(config_path)
+@click.option(
+    "--api-url",
+    type=str,
+    default=None,
+    envvar="LOGFORGE_API_URL",
+    help="Management API base URL.",
+)
+@click.option(
+    "--api-key",
+    type=str,
+    default=None,
+    envvar="LOGFORGE_API_KEY",
+    help="Management API key.",
+)
+@click.option(
+    "--api-timeout",
+    type=float,
+    default=5.0,
+    show_default=True,
+    help="API client timeout in seconds.",
+)
+@click.pass_context
+def cli(
+    ctx: click.Context,
+    config_path: Optional[Path],
+    api_url: Optional[str],
+    api_key: Optional[str],
+    api_timeout: float,
+) -> None:
+    ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config_path
+    client = APIClient(base_url=api_url, api_key=api_key, timeout=api_timeout)
+    ctx.obj["api_client"] = client
+
+    def _close_client() -> None:
+        client.close()
+
+    ctx.call_on_close(_close_client)
 
 
 @cli.command()
 @click.option(
     "--path",
-    "base_path",
-    type=click.Path(file_okay=False, path_type=Path),
-    help="Initialize configuration under this directory.",
+    "state_path",
+    type=click.Path(path_type=Path, file_okay=False),
+    default=None,
+    help="Base directory for LogForge state (defaults to ~/.logforge).",
 )
-@click.option("--force", is_flag=True, help="Overwrite existing configuration files.")
-@pass_context
-@handle_errors
-def init(ctx: CLIContext, base_path: Optional[Path], force: bool) -> None:
-    """Initialize configuration and directories."""
-    base = base_path.expanduser() if base_path else ctx.manager.config_path.parent
-    base.mkdir(parents=True, exist_ok=True)
-    config_path = base / "config.yaml"
+@click.option("--force", is_flag=True, help="Overwrite existing files.")
+def init(state_path: Optional[Path], force: bool) -> None:
+    base_config_path = state_path / "config.yaml" if state_path else default_config_path()
+    entities_path = state_path / "entities.yaml" if state_path else default_entities_path()
+    templates_dir = state_path / "templates" if state_path else default_templates_dir()
 
-    overrides = {
-        "entity_registry": {"path": str(base / "entities.yaml")},
-        "templates": {
-            "local_path": str(base / "templates"),
-            "default_path": str(base / "templates" / "default"),
-            "custom_path": str(base / "templates" / "custom"),
-        },
-        "logging": {"file": str(base / "logforge.log")},
-        "outputs": {
-            "definitions": [
-                {
-                    "name": "default_file",
-                    "type": "file",
-                    "path": str(base / "logs" / "{generator}.log"),
-                    "rotation": {
-                        "type": "size",
-                        "max_size": "100MB",
-                        "max_age": "7d",
-                        "compress": True,
-                    },
-                },
-                {"name": "console_json", "type": "console", "format": "json"},
-            ]
-        },
-    }
+    ensure_runtime_paths()
+    if state_path:
+        state_path.mkdir(parents=True, exist_ok=True)
+        (templates_dir / "default").mkdir(parents=True, exist_ok=True)
+        (templates_dir / "custom").mkdir(parents=True, exist_ok=True)
 
-    manager = ConfigManager(config_path=config_path)
-    manager.save_default(overwrite=force, overrides=overrides)
-    manager.ensure_supporting_files(base_dir=base)
-    ctx.set_config_path(config_path)
+    try:
+        config_file = write_default_config(base_config_path, force=force)
+    except FileExistsError as exc:
+        if not force:
+            raise click.ClickException(str(exc)) from exc
+        config_file = write_default_config(base_config_path, force=True)
 
-    click.secho(f"Initialized LogForge configuration at {config_path}", fg="green")
+    try:
+        entities_file = _write_entities_file(entities_path, force=force)
+    except FileExistsError as exc:
+        if not force:
+            raise click.ClickException(str(exc)) from exc
+        entities_file = _write_entities_file(entities_path, force=True)
+
+    click.echo(f"Configuration written to {config_file}")
+    click.echo(f"Entities file written to {entities_file}")
+    click.echo(f"Template directories ensured at {templates_dir}")
+
+
+def _resolve_config(ctx: click.Context) -> LogForgeConfig:
+    path_override = ctx.obj.get("config_path") if ctx.obj else None
+    return load_config(config_path=path_override)
+
+
+def _resolve_config_with_overrides(ctx: click.Context, overrides: Optional[dict] = None) -> LogForgeConfig:
+    path_override = ctx.obj.get("config_path") if ctx.obj else None
+    return load_config(config_path=path_override, overrides=overrides or {})
 
 
 @cli.group()
-def config() -> None:
-    """Configuration commands."""
+@click.pass_context
+def config(ctx: click.Context) -> None:
+    ctx.ensure_object(dict)
+    if "config_path" not in ctx.obj:
+        ctx.obj["config_path"] = None
 
 
 @config.command("show")
 @click.option(
     "--output",
-    type=click.Choice(["yaml", "json"]),
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
     default="yaml",
-    show_default=True,
 )
-@pass_context
-@handle_errors
-def config_show(ctx: CLIContext, output: str) -> None:
-    """Display current configuration."""
-    cfg = ctx.ensure_config()
-    echo_output(cfg.model_dump(mode="json"), output)
+@click.pass_context
+def config_show(ctx: click.Context, output: str) -> None:
+    config = _resolve_config(ctx)
+    data = config.dict_with_expanded_paths()
+    if output.lower() == "json":
+        import json
+
+        click.echo(json.dumps(data, indent=2))
+    else:
+        click.echo(yaml.safe_dump(data, sort_keys=False))
 
 
 @config.command("validate")
-@pass_context
-@handle_errors
-def config_validate(ctx: CLIContext) -> None:
-    """Validate configuration file."""
-    ctx.ensure_config()
-    click.secho("Configuration valid.", fg="green")
+@click.pass_context
+def config_validate(ctx: click.Context) -> None:
+    try:
+        _resolve_config(ctx)
+    except (ValidationError, ValueError) as exc:
+        raise click.ClickException(f"Invalid configuration: {exc}") from exc
+    click.echo("Configuration is valid.")
 
 
 @cli.group()
-def api() -> None:
-    """API server commands."""
+@click.pass_context
+def api(ctx: click.Context) -> None:
+    ctx.ensure_object(dict)
 
 
-@api.command("start")
-@click.option("--host", type=str, help="Override API host.")
-@click.option("--port", type=int, help="Override API port.")
-@pass_context
-@handle_errors
-def api_start(ctx: CLIContext, host: Optional[str], port: Optional[int]) -> None:
-    """Start the embedded FastAPI server."""
-    cfg = ctx.ensure_config()
+@api.command("serve")
+@click.option("--host", type=str, default=None, help="Override bind host.")
+@click.option("--port", type=int, default=None, help="Override bind port.")
+@click.option("--no-console-log", is_flag=True, default=False, help="Disable console logging output.")
+@click.pass_context
+def api_serve(ctx: click.Context, host: Optional[str], port: Optional[int], no_console_log: bool) -> None:
+    overrides = {}
     if host:
-        cfg.api.host = host
+        overrides.setdefault("api", {})["host"] = host
     if port:
-        cfg.api.port = port
+        overrides.setdefault("api", {})["port"] = port
 
-    configure_logging(cfg.logging)
-    server = APIServer(cfg)
-    click.secho(f"Starting API server on {cfg.api.host}:{cfg.api.port} (press Ctrl+C to stop)", fg="green")
+    config = _resolve_config_with_overrides(ctx, overrides)
+    ensure_runtime_paths()
+    configure_logging(config.logging, enable_console=not no_console_log)
 
+    server = APIServer(config)
+    click.echo(f"Starting LogForge API on http://{config.api.host}:{config.api.port}")
     try:
         server.start(background=False)
     except KeyboardInterrupt:
-        click.echo("\nShutting down...")
+        click.echo("Shutting down...")
         server.stop()
 
 
 @cli.command()
 @click.option(
-    "--api-url",
-    default=None,
-    envvar="LOGFORGE_API_URL",
-    help="Override API URL (default derived from config).",
-)
-@click.option(
-    "--api-key",
-    default=None,
-    envvar="LOGFORGE_API_KEY",
-    help="API key for authenticated requests.",
-)
-@click.option(
     "--output",
-    type=click.Choice(["table", "json", "yaml"]),
+    type=click.Choice(["table", "json"], case_sensitive=False),
     default="table",
     show_default=True,
 )
-@pass_context
-@handle_errors
-def status(ctx: CLIContext, api_url: Optional[str], api_key: Optional[str], output: str) -> None:
-    """Fetch system status from the API."""
-    cfg = ctx.ensure_config()
-    base_url = api_url or f"http://{cfg.api.host}:{cfg.api.port}"
-    key = api_key or (cfg.api.auth.key if cfg.api.auth.enabled else None)
+@click.pass_context
+def status(ctx: click.Context, output: str) -> None:
+    """Fetch generator status from the API."""
+    client: APIClient = ctx.obj["api_client"]
+    try:
+        payload = client.get("/api/status")
+    except APIClientError as exc:
+        echo_api_error(exc)
+        raise click.Abort()
 
-    with APIClient(base_url=base_url, api_key=key) as client:
-        data = client.json_request("GET", "/api/status")
-
-    if output == "table":
-        click.echo(f"Uptime: {data.get('uptime')}s | Version: {data.get('version')}")
-        generators = data.get("generators") or []
-        if generators:
-            click.echo("\nGenerators:")
-            render_table(generators)
-        else:
-            click.echo("\nGenerators: none")
-        system = data.get("system") or {}
-        if system:
-            click.echo("\nSystem:")
-            render_table(system)
+    generators = payload.get("generators", [])
+    columns = [
+        ("name", "NAME"),
+        ("state", "STATE"),
+        ("template", "TEMPLATE"),
+        ("events_generated", "EVENTS"),
+        ("errors", "ERRORS"),
+        ("uptime", "UPTIME"),
+    ]
+    if output.lower() == "json":
+        click.echo(render_output(payload, output))
     else:
-        echo_output(data, output)
+        click.echo(render_output(generators, output, columns=columns))
+
+
+@cli.command()
+@click.pass_context
+def health(ctx: click.Context) -> None:
+    """Fetch API health summary."""
+    client: APIClient = ctx.obj["api_client"]
+    try:
+        payload = client.get("/api/health")
+    except APIClientError as exc:
+        echo_api_error(exc)
+        raise click.Abort()
+    click.echo(render_output(payload, "json"))
+
+
+cli.add_command(entities_cmd)
+cli.add_command(templates_cmd)
+cli.add_command(generators_cmd)
