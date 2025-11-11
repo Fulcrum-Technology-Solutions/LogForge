@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logforge"
+version = "1.0.0"
+description = "Synthetic event log generator with template-based architecture"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [{name = "John Owen", email = "john@ftsc.com"}]
+requires-python = ">=3.9"
+
+dependencies = [
+    "jinja2>=3.1.0",
+    "pyyaml>=6.0",
+    "click>=8.1.0",
+    "requests>=2.31.0",
+    "python-dateutil>=2.8.0",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "prometheus-client>=0.19.0",
+    "pydantic>=2.5.0",
+    "faker>=22.0.0",
+    "httpx>=0.26.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+]
+
+[project.scripts]
+logforge = "logforge.cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/logforge"
+Documentation = "https://docs.logforge.io"
+Repository = "https://github.com/yourusername/logforge.git"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src/logforge --cov-report=term-missing"
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
