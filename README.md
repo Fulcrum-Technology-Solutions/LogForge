@@ -17,14 +17,18 @@ pip install -e ".[dev]"
 # bootstrap state under ~/.logforge
 logforge init
 
+# run API server (CTRL+C to stop)
+logforge api serve
+
 # inspect configuration
 logforge config show
 
 # validate configuration
 logforge config validate
 
-# start management API (CTRL+C to stop)
-logforge api serve
+# query API via CLI
+logforge health
+logforge status --output table
 ```
 
 ### Configuration
@@ -41,6 +45,9 @@ Once the API is running:
 ```bash
 curl http://127.0.0.1:8080/api/health
 curl http://127.0.0.1:8080/api/status
+
+# using the CLI with API key
+logforge --api-url http://127.0.0.1:8080 --api-key <token> status --output json
 ```
 
 Set an API key by toggling `api.auth.enabled` in the config or export `LOGFORGE__API__AUTH__ENABLED=true`.

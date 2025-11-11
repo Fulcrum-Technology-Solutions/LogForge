@@ -19,6 +19,7 @@ from logforge.core.config import (
     write_default_config,
 )
 from logforge.utils.logging import configure_logging
+from .utils import APIClient, APIClientError, echo_api_error, render_output
 
 
 def _write_entities_file(path: Path, *, force: bool = False) -> Path:
@@ -73,10 +74,44 @@ def _write_entities_file(path: Path, *, force: bool = False) -> Path:
     default=None,
     help="Override configuration path.",
 )
+@click.option(
+    "--api-url",
+    type=str,
+    default=None,
+    envvar="LOGFORGE_API_URL",
+    help="Management API base URL.",
+)
+@click.option(
+    "--api-key",
+    type=str,
+    default=None,
+    envvar="LOGFORGE_API_KEY",
+    help="Management API key.",
+)
+@click.option(
+    "--api-timeout",
+    type=float,
+    default=5.0,
+    show_default=True,
+    help="API client timeout in seconds.",
+)
 @click.pass_context
-def cli(ctx: click.Context, config_path: Optional[Path]) -> None:
+def cli(
+    ctx: click.Context,
+    config_path: Optional[Path],
+    api_url: Optional[str],
+    api_key: Optional[str],
+    api_timeout: float,
+) -> None:
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config_path
+    client = APIClient(base_url=api_url, api_key=api_key, timeout=api_timeout)
+    ctx.obj["api_client"] = client
+
+    def _close_client() -> None:
+        client.close()
+
+    ctx.call_on_close(_close_client)
 
 
 @cli.command()
@@ -193,3 +228,48 @@ def api_serve(ctx: click.Context, host: Optional[str], port: Optional[int], no_c
     except KeyboardInterrupt:
         click.echo("Shutting down...")
         server.stop()
+
+
+@cli.command()
+@click.option(
+    "--output",
+    type=click.Choice(["table", "json"], case_sensitive=False),
+    default="table",
+    show_default=True,
+)
+@click.pass_context
+def status(ctx: click.Context, output: str) -> None:
+    """Fetch generator status from the API."""
+    client: APIClient = ctx.obj["api_client"]
+    try:
+        payload = client.get("/api/status")
+    except APIClientError as exc:
+        echo_api_error(exc)
+        raise click.Abort()
+
+    generators = payload.get("generators", [])
+    columns = [
+        ("name", "NAME"),
+        ("state", "STATE"),
+        ("template", "TEMPLATE"),
+        ("events_generated", "EVENTS"),
+        ("errors", "ERRORS"),
+        ("uptime", "UPTIME"),
+    ]
+    if output.lower() == "json":
+        click.echo(render_output(payload, output))
+    else:
+        click.echo(render_output(generators, output, columns=columns))
+
+
+@cli.command()
+@click.pass_context
+def health(ctx: click.Context) -> None:
+    """Fetch API health summary."""
+    client: APIClient = ctx.obj["api_client"]
+    try:
+        payload = client.get("/api/health")
+    except APIClientError as exc:
+        echo_api_error(exc)
+        raise click.Abort()
+    click.echo(render_output(payload, "json"))

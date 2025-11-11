@@ -13,6 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from logforge.api.auth import APIKeyAuth, ensure_api_key
 from logforge.api.endpoints.system import router as system_router
 from logforge.core.config import ApiAuthSettings, LogForgeConfig
+from logforge.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def _system_snapshot() -> dict[str, float]:
@@ -80,7 +83,11 @@ class ApiServer:
         return bool(self._thread and self._thread.is_alive())
 
     def start(self, *, background: bool = True, log_level: str = "info") -> None:
-        if not self._config.api.enabled or self.is_running:
+        if not self._config.api.enabled:
+            logger.info("API server disabled via configuration; skipping start.")
+            return
+        if self.is_running:
+            logger.info("API server already running on %s:%s", self._config.api.host, self._config.api.port)
             return
 
         uvicorn_config = uvicorn.Config(
@@ -93,20 +100,26 @@ class ApiServer:
         self._server = uvicorn.Server(uvicorn_config)
 
         if background:
+            logger.info("Starting API server in background on %s:%s", self._config.api.host, self._config.api.port)
             self._thread = threading.Thread(target=self._server.run, name="logforge-api", daemon=True)
             self._thread.start()
         else:
+            logger.info("Starting API server in foreground on %s:%s", self._config.api.host, self._config.api.port)
             self._server.run()
 
     def stop(self, *, timeout: float = 5.0) -> None:
         if not self._server:
+            logger.info("API server not running.")
             return
+        logger.info("Stopping API server...")
         self._server.should_exit = True
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=timeout)
+            logger.info("API server thread joined.")
         self._server = None
         self._thread = None
 
     def restart(self) -> None:
+        logger.info("Restarting API server...")
         self.stop()
         self.start()

@@ -29,7 +29,7 @@
 - [x] Setup Python logging with rotation
 - [x] Implement log level configuration
 - [x] Create structured log format
-- [ ] Add module-specific loggers
+- [x] Add module-specific loggers
 
 ### 1.4 FastAPI Server Skeleton
 - [x] Create FastAPI application
@@ -45,11 +45,12 @@
 - [x] Implement `logforge init` command
 - [x] Implement `logforge config show` command
 - [x] Implement `logforge config validate` command
-- [ ] Add HTTP client wrapper for API calls
-- [ ] Add error handling & formatting
-- [ ] Add table output support
-- [ ] Add JSON output mode (--output json)
+- [x] Add HTTP client wrapper for API calls
+- [x] Add error handling & formatting
+- [x] Add table output support
+- [x] Add JSON output mode (--output json)
 - [x] Add API serve command
+- [x] Add health/status API commands
 
 ### 1.6 Testing & Acceptance
 - [ ] Manual smoke test: `logforge init`
@@ -448,7 +449,7 @@
 
 | Phase | Status | Progress | Completion Date |
 |-------|--------|----------|-----------------|
-| Phase 1 | 🔄 In Progress | 60% | - |
+| Phase 1 | 🔄 In Progress | 80% | - |
 | Phase 2 | ⏳ Pending | 0% | - |
 | Phase 3 | ⏳ Pending | 0% | - |
 | Phase 4 | ⏳ Pending | 0% | - |
