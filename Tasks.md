@@ -472,3 +472,4 @@
 - Using Click for CLI framework
 - Using FastAPI for API server
 - Using Pydantic for validation
+- Added initial pytest scaffolding (config + CLI) and executed smoke suite (`pytest`, CLI commands, API health check)
