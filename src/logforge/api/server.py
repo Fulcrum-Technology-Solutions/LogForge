@@ -13,8 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from logforge.api.auth import APIKeyAuth, ensure_api_key
 from logforge.api.endpoints.system import router as system_router
 from logforge.api.endpoints.entities import router as entities_router
+from logforge.api.endpoints.templates import router as templates_router
+from logforge.api.endpoints.generators import router as generators_router
 from logforge.core.config import ApiAuthSettings, LogForgeConfig
 from logforge.entities.registry import EntityRegistry
+from logforge.templates.manager import TemplateManager
+from logforge.outputs.manager import OutputManager
+from logforge.core.engine import GenerationEngine
 from logforge.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -50,6 +55,8 @@ def create_app(config: LogForgeConfig) -> FastAPI:
 
     app.include_router(system_router)
     app.include_router(entities_router)
+    app.include_router(templates_router)
+    app.include_router(generators_router)
 
     auth_guard = APIKeyAuth(auth_settings)
 
@@ -58,17 +65,28 @@ def create_app(config: LogForgeConfig) -> FastAPI:
     app.state.auth_guard = lambda token: auth_guard(authorization=token)
     app.state.system_provider = _system_snapshot
     app.state.auth_settings = auth_settings
-    app.state.entity_registry = EntityRegistry.from_config(config)
+    entity_registry = EntityRegistry.from_config(config)
+    template_manager = TemplateManager(config, entity_registry)
+    output_manager = OutputManager(config)
+    generation_engine = GenerationEngine(config, template_manager, output_manager)
+    app.state.entity_registry = entity_registry
+    app.state.template_manager = template_manager
+    app.state.output_manager = output_manager
+    app.state.generation_engine = generation_engine
 
     @app.on_event("startup")
     async def _startup() -> None:
         app.state.start_time = time.time()
         app.state.entity_registry.load()
+        template_manager.list_templates()
+        # Generators are initialized but not started automatically
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
         if config.entity_registry.auto_save:
             app.state.entity_registry.save()
+        # templates are persisted eagerly, nothing to do
+        generation_engine.stop_all()
 
     return app
 

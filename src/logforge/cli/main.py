@@ -21,6 +21,8 @@ from logforge.core.config import (
 from logforge.utils.logging import configure_logging
 from .utils import APIClient, APIClientError, echo_api_error, render_output
 from .entities import entities as entities_cmd
+from .templates import templates as templates_cmd
+from .generators import generators as generators_cmd
 
 
 def _write_entities_file(path: Path, *, force: bool = False) -> Path:
@@ -277,3 +279,5 @@ def health(ctx: click.Context) -> None:
 
 
 cli.add_command(entities_cmd)
+cli.add_command(templates_cmd)
+cli.add_command(generators_cmd)

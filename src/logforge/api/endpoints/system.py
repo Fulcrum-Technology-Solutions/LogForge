@@ -18,18 +18,24 @@ def get_config(request: Request) -> LogForgeConfig:
 def health(request: Request) -> Dict[str, Any]:
     config: LogForgeConfig = get_config(request)
     uptime = time.time() - request.app.state.start_time
+    templates = request.app.state.template_manager.list_templates()
+    engine = request.app.state.generation_engine
+    generator_snapshots = engine.list_generators()
+    running = sum(1 for g in generator_snapshots if g["state"] == "RUNNING")
+    degraded = sum(1 for g in generator_snapshots if g["state"] == "DEGRADED")
+    errored = sum(1 for g in generator_snapshots if g["state"] == "ERROR")
     return {
         "status": "healthy",
         "uptime": int(uptime),
         "version": config.version,
         "generators": {
             "total": len(config.generators),
-            "running": 0,
-            "degraded": 0,
-            "error": 0,
+            "running": running,
+            "degraded": degraded,
+            "error": errored,
         },
-        "entity_registry": "unknown",
-        "template_cache": "unknown",
+        "entity_registry": "healthy",
+        "template_cache": {"templates": len(templates)},
     }
 
 
@@ -41,6 +47,7 @@ def status(request: Request, authorization: Optional[str] = Header(default=None)
     return {
         "uptime": int(uptime),
         "version": config.version,
-        "generators": [],
+        "generators": request.app.state.generation_engine.list_generators(),
         "system": request.app.state.system_provider(),
+        "templates": request.app.state.template_manager.list_templates(),
     }
