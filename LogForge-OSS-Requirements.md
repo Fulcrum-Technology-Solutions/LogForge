@@ -67,16 +67,18 @@ LogForge is a synthetic event log generator designed to produce realistic log da
 
 **FastAPI Management API**:
 
-- Embedded server running in background thread
+- Embedded server running in background thread (auto-started with service)
 - Provides REST endpoints for all operations
 - Health checks, metrics, and monitoring
+- Mandatory companion for CLI (process refuses RUNNING state until API healthy)
 - Optional API key authentication
 
 **CLI Interface**:
 
-- Thin wrapper around API calls
+- Thin wrapper around API calls (no direct file manipulation)
 - Handles user interaction and output formatting
 - Connects to local or remote API
+- Emits fatal error if management API unavailable or service not running
 
 **Generation Engine Core**:
 
@@ -115,7 +117,7 @@ LogForge is a synthetic event log generator designed to produce realistic log da
 
 ```yaml
 api:
-  enabled: true              # Can disable for headless mode
+  enabled: true              # Must remain true while generators are running
   host: 127.0.0.1           # Listen address
   port: 8080                # Listen port
   auth:
@@ -355,16 +357,18 @@ Response 200:
 
 ### 3.1 Configuration File Format
 
-**Location**: `~/.logforge/config.yaml` or `./config.yaml`
+**LogForge Home (`LOGFORGE_HOME`)**: default resolves to `~/.logforge` for interactive users and `/var/lib/logforge` for the dedicated service account. All first-class configuration artifacts (config.yaml, entities.yaml, templates/, outputs cache, etc.) MUST live inside `${LOGFORGE_HOME}`. The CLI refuses to mutate configuration outside that root.
+
+**Location**: `${LOGFORGE_HOME}/config.yaml` (CLI `--config` flag can point to an alternate path inside `${LOGFORGE_HOME}`)
 
 **Template Configuration Section**:
 
 ```yaml
 # Template Settings
 templates:
-  local_path: ~/.logforge/templates
-  default_path: ~/.logforge/templates/default  # Community templates
-  custom_path: ~/.logforge/templates/custom    # User templates
+  local_path: ${LOGFORGE_HOME}/templates
+  default_path: ${LOGFORGE_HOME}/templates/default  # Community templates
+  custom_path: ${LOGFORGE_HOME}/templates/custom    # User templates
   precedence: custom_first                      # custom_first, default_first, explicit
   community_api_url: https://api.logforge.io/v1
   auto_update_check: true
@@ -395,7 +399,7 @@ engine:
 
 # API Server Settings
 api:
-  enabled: true                   # Disable for headless/embedded mode
+  enabled: true                   # Must remain true while generators active
   host: 127.0.0.1                # Listen address
   port: 8080                     # Listen port
   auth:
@@ -404,7 +408,7 @@ api:
 
 # Entity Registry Settings
 entity_registry:
-  path: ~/.logforge/entities.yaml
+  path: ${LOGFORGE_HOME}/entities.yaml
   auto_save: true
   save_interval: 60              # seconds
   backup_enabled: true
@@ -412,7 +416,7 @@ entity_registry:
 
 # Template Settings
 templates:
-  local_path: ~/.logforge/templates
+  local_path: ${LOGFORGE_HOME}/templates
   community_api_url: https://api.logforge.io/v1
   auto_update_check: true
   cache_ttl: 3600                # seconds
@@ -420,7 +424,7 @@ templates:
 # Application Logging
 logging:
   level: INFO
-  file: ~/.logforge/logforge.log
+  file: ${LOGFORGE_HOME}/logforge.log
   rotation:
     max_size: 50MB
     backup_count: 5
@@ -518,7 +522,7 @@ generators:
 **Directory Layout**:
 
 ```
-~/.logforge/templates/
+${LOGFORGE_HOME}/templates/
 ├── default/                    # Community templates (managed by LogForge)
 │   ├── microsoft/
 │   │   └── windows/
@@ -589,7 +593,27 @@ variables:
     description: User account name
 ```
 
-### 4.2 Template Rendering Context
+### 4.2 Template Metadata & Package Schema
+
+| Artifact | Field | Type | Required | Notes |
+|----------|-------|------|----------|-------|
+| `metadata.yaml` | `id` | string | ✅ | Unique `<vendor>/<product>/<data_source>/<template>` identifier. |
+| `metadata.yaml` | `vendor` / `product` / `data_source` | string | ✅ | Match directory hierarchy; used for registry queries. |
+| `metadata.yaml` | `format` | enum | ✅ | `json`, `xml`, `raw`, `csv`, `cef`, etc. Drives validation/output handlers. |
+| `metadata.yaml` | `version` | semver | ✅ (default templates) | Incremented on publishing; custom templates omit or set to `null`. |
+| `metadata.yaml` | `variables` | array<object> | optional | Schema for configurable knobs exposed via CLI/API. |
+| `metadata.yaml` | `base_template` | string | optional | Must reference matching default template when customizing. |
+| `template.j2` | body | Jinja2 | ✅ | Rendered per event; must reference only approved helpers/filters. |
+| `collection.json` | `templates` | array | ✅ | Lists template IDs included in package; used by installer. |
+| `manifest.json` | `package_format_version` | string | ✅ | Currently `"1.0"`; ensures forward compatibility. |
+| `manifest.json` | `checksum` | string | ✅ | SHA-256 of payload; verified prior to install. |
+
+Validation:
+- All metadata files must live under `${LOGFORGE_HOME}/templates`.
+- CLI cross-validates directory structure versus `metadata.yaml.id`.
+- Packages missing schema fields are rejected with actionable errors.
+
+### 4.3 Template Rendering Context
 
 Templates have access to:
 
@@ -629,7 +653,7 @@ Templates have access to:
 {{ random_choice(['A', 'B', 'C']) }}      {# Random selection #}
 ```
 
-### 4.3 Example Template
+### 4.4 Example Template
 
 **File**: `default/microsoft/windows/eventlog/security/template.j2`
 
@@ -650,7 +674,7 @@ Templates have access to:
 </Event>
 ```
 
-### 4.4 Template Validation
+### 4.5 Template Validation
 
 **Validation Checks**:
 
@@ -663,7 +687,7 @@ Templates have access to:
 
 **Command**: `logforge templates validate <path>`
 
-### 4.5 Template Customization Workflow
+### 4.6 Template Customization Workflow
 
 **Making a Custom Version**:
 
@@ -719,7 +743,7 @@ logforge templates revert microsoft/windows/eventlog/security
 
 ### 5.1 Entity Storage Format
 
-**File**: `~/.logforge/entities.yaml`
+**File**: `${LOGFORGE_HOME}/entities.yaml`
 
 ```yaml
 organization:
@@ -783,7 +807,25 @@ services:
     protocol: https
 ```
 
-### 5.2 Entity Management Operations
+### 5.2 Entity Schema Specification
+
+| Path | Type | Required | Constraints |
+|------|------|----------|-------------|
+| `organization` | object | ✅ | Must contain `name`, `domain`, and optional nested `contacts`, `attributes`, `timezone`, etc. Domains validated as FQDN. |
+| `organization.name` | string | ✅ | 1-128 chars. |
+| `organization.domain` | string | ✅ | RFC 1035 compliant. |
+| `users` | array<object> | ✅ (min 1) | Each user must include `username`, `email`, `full_name`. Additional fields stored under `attributes`. Usernames/emails unique (case insensitive). |
+| `devices` | array<object> | ✅ (min 1) | Require `hostname`, `ip_address`, `mac_address`. Hostnames unique; IPs validated (IPv4/IPv6). |
+| `services` | array<object> | ✅ (min 1) | Require `name`, `port`, `protocol`. Name unique. |
+| `attributes` (any entity) | object | optional | Arbitrary key/value pairs; scalar values only (string, number, bool). |
+
+Validation Rules:
+- File MUST reside at `${LOGFORGE_HOME}/entities.yaml`.
+- Schema versioned via optional top-level `version` (defaults to `1.0`).
+- CLI/API reject duplicates, malformed emails, IPs, or MAC addresses.
+- Entities are normalized into internal cache; missing mandatory fields abort startup.
+
+### 5.3 Entity Management Operations
 
 **CLI Commands**:
 
@@ -855,6 +897,8 @@ logforge entities validate
       │ RUNNING  │            │ STARTING │
       └──────────┘            └──────────┘
 ```
+
+> **API Gate:** transitions into `RUNNING` require a successful `/api/health` response; failure to bind the API keeps the engine in `STARTING` and surfaces an error to the CLI.
 
 ### 6.2 Error Handling Behaviors
 
@@ -1279,6 +1323,14 @@ export LOGFORGE_API_KEY=abc123
 logforge status
 ```
 
+> **Operational Contract:** every CLI command performs an API health check before execution. If the management API is unreachable or reports the service as stopped, the CLI exits with `SERVICE_NOT_RUNNING` and points the operator to start the daemon (mirrors Splunk/Cribl UX).
+
+```bash
+$ logforge generators list
+✗ ERROR: SERVICE_NOT_RUNNING
+Hint: start the service first → sudo systemctl start logforge
+```
+
 ### 9.2 Complete CLI Command Reference
 
 **Template Management Section**:
@@ -1473,25 +1525,28 @@ RUN pip install --no-cache-dir build && \
 FROM python:3.11-slim
 
 # Create logforge user
-RUN useradd -m -u 1000 logforge
+RUN useradd -m -d /var/lib/logforge -u 1000 logforge
+
+ENV LOGFORGE_HOME=/var/lib/logforge
 
 # Install package
 COPY --from=builder /build/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && \
     rm /tmp/*.whl
 
-# Create directories
-RUN mkdir -p /home/logforge/.logforge/templates && \
-    chown -R logforge:logforge /home/logforge
+# Create directories under LOGFORGE_HOME
+RUN mkdir -p ${LOGFORGE_HOME}/templates && \
+    mkdir -p /var/log/logforge && \
+    chown -R logforge:logforge ${LOGFORGE_HOME} /var/log/logforge
 
 USER logforge
-WORKDIR /home/logforge
+WORKDIR /var/lib/logforge
 
 # Expose API port
 EXPOSE 8080
 
 # Volume for config and output
-VOLUME ["/home/logforge/.logforge", "/var/log/logforge"]
+VOLUME ["/var/lib/logforge", "/var/log/logforge"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
@@ -1514,7 +1569,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config:/home/logforge/.logforge
+      - ./config:/var/lib/logforge
       - ./logs:/var/log/logforge
     environment:
       - LOGFORGE_LOG_LEVEL=INFO
@@ -1560,13 +1615,13 @@ After=network.target
 Type=simple
 User=logforge
 Group=logforge
-WorkingDirectory=/home/logforge
+WorkingDirectory=/var/lib/logforge
 ExecStart=/usr/local/bin/logforge api start
 Restart=on-failure
 RestartSec=10s
 
 # Environment
-Environment="LOGFORGE_CONFIG=/etc/logforge/config.yaml"
+Environment="LOGFORGE_HOME=/var/lib/logforge"
 
 # Logging
 StandardOutput=journal
