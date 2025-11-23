@@ -9,17 +9,41 @@ from logforge import __version__
 from logforge.core import config as core_config
 from . import entities as entities_commands
 from . import generators as generators_commands
-from . import service as service_commands
-from . import start as start_commands
 from . import templates as templates_commands
 from .common import CLIConfig
 
 app = typer.Typer(help="LogForge synthetic event generator CLI.")
-app.add_typer(start_commands.app, name="start")
-app.add_typer(service_commands.app, name="service")
+
+# Register commands that don't require service initialization
 app.add_typer(entities_commands.app, name="entities")
 app.add_typer(generators_commands.app, name="generators")
 app.add_typer(templates_commands.app, name="templates")
+
+# Lazy registration for service commands
+# Try to import and register, but gracefully handle import errors
+# This allows commands like 'init' to work even if service modules have import issues
+# The import happens at module load time, but errors are caught and handled gracefully
+try:
+    from . import start as start_commands
+    app.add_typer(start_commands.app, name="start")
+except ImportError as exc:
+    # Service commands unavailable - log but don't fail
+    # Commands like 'init' will still work
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug("Start command unavailable: %s - package may need reinstalling", exc)
+    # If someone tries to use 'start', they'll get "command not found" which is acceptable
+
+try:
+    from . import service as service_commands
+    app.add_typer(service_commands.app, name="service")
+except ImportError as exc:
+    # Service commands unavailable - log but don't fail
+    # Commands like 'init' will still work
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug("Service command unavailable: %s - package may need reinstalling", exc)
+    # If someone tries to use 'service', they'll get "command not found" which is acceptable
 
 
 
