@@ -67,7 +67,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
 
-## Configuration Management {Priority: High} [1/6 complete]
+## Configuration Management {Priority: High} [2/6 complete]
 
 - [x] Implement YAML configuration loader with environment variable substitution {Priority: High}
   - Implemented: Added recursive loader in `core/config.py` that reads `config.yaml`, enforces location under `LOGFORGE_HOME`, substitutes `${LOGFORGE_HOME}` and other `${VAR}` tokens, expands `~`, and returns a processed dictionary for later Pydantic validation.
@@ -84,7 +84,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Configuration loader
   - Notes: Validate all sections (api, engine, entity_registry, templates, outputs, generators)
 
-- [ ] Implement `LOGFORGE_HOME` resolution logic
+- [x] Implement `LOGFORGE_HOME` resolution logic {Priority: High}
+  - Implemented: Added `core/home.py` with `resolve_logforge_home` that honors explicit overrides, `LOGFORGE_HOME` env var, service mode flag/user detection, and defaults to `~/.logforge` or `/var/lib/logforge` per requirements; integrated loader to use it.
+  - Tested: Added `tests/unit/test_home_resolution.py` covering env overrides, service flag, username detection, and interactive default, plus full suite (`ruff`, `black --check`, `pytest`, `mypy`).
+  - Files: `src/logforge/core/home.py`, `src/logforge/core/config.py`, `tests/unit/test_home_resolution.py`
+  - Notes: Recognizes `LOGFORGE_SERVICE_MODE` env or user `logforge` as service context; resolves paths to absolute.
+  - Date: 2025-11-23
   - Acceptance: Defaults to `~/.logforge` for interactive, `/var/lib/logforge` for service user
   - Dependencies: Configuration loader
   - Notes: Check user context (interactive vs service account)
@@ -1394,4 +1399,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Delivered Typer CLI scaffold (`logforge --help/--version`), subcommand grouping, helper messaging, unit tests, and metadata-driven `__version__` propagation.
 - ✅ Completed: Config loader w/ env substitution (Configuration Management)
   - Implemented YAML loader with `${VAR}` expansion + safety checks, plus unit tests for env substitution, path enforcement, and `~` expansion.
+- ✅ Completed: LOGFORGE_HOME resolver (Configuration Management)
+  - Added service/interactive home detection module with env/user heuristics, wired into loader, and covered with dedicated unit tests.
 

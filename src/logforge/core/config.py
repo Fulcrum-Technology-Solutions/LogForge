@@ -9,6 +9,8 @@ from typing import Any, Mapping, cast
 
 import yaml
 
+from logforge.core.home import resolve_logforge_home
+
 ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")
 CONFIG_FILENAME = "config.yaml"
 
@@ -34,7 +36,7 @@ def load_config(
         env: Optional environment mapping for substitution (defaults to os.environ).
     """
 
-    home = _resolve_logforge_home(logforge_home)
+    home = resolve_logforge_home(override=logforge_home, env=env)
     config_file = _resolve_config_path(config_path, home)
 
     raw_data = _read_yaml(config_file)
@@ -51,15 +53,6 @@ def load_config(
 
     processed = cast(ConfigDict, _walk_and_replace(raw_data, replacements))
     return processed
-
-
-def _resolve_logforge_home(logforge_home: Path | None) -> Path:
-    if logforge_home is not None:
-        return Path(logforge_home).expanduser()
-    env_home = os.environ.get("LOGFORGE_HOME")
-    if env_home:
-        return Path(env_home).expanduser()
-    return Path.home() / ".logforge"
 
 
 def _resolve_config_path(config_path: Path | None, home: Path) -> Path:
