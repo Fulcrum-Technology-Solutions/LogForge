@@ -1,14 +1,52 @@
+# Python
 __pycache__/
-.pytest_cache/
-.mypy_cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
 .venv/
 env/
 venv/
-.DS_Store
+ENV/
+env.bak/
+venv.bak/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
 .idea/
 .vscode/
-*.pyc
-*.pyo
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LogForge-specific
+outputs/
 *.log
+
+# Other
 node_modules/
 
