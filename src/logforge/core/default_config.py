@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -16,7 +16,7 @@ from logforge.core.home import resolve_logforge_home
 class DefaultConfigOptions:
     organization_name: str = "Example Corporation"
     organization_domain: str = "example.com"
-    log_output_dir: Path = Path("/var/log/logforge")
+    log_output_dir: Path = field(default_factory=lambda: Path("/var/log/logforge"))
     api_port: int = 8080
     base_rate: int = 10
     install_templates: bool = True

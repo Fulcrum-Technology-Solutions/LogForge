@@ -119,7 +119,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Default config generator
   - Notes: Optional enhancement, can be deferred
 
-- [ ] Create CLI commands: `config show`, `config set`, `config validate`
+  - [x] Create CLI commands: `config show`, `config set`, `config validate` {Priority: High}
+    - Implemented: Added Typer subcommands that load/validate config via schema, support JSON/YAML output, mutate dot-path keys, and re-write config safely under LOGFORGE_HOME until API endpoints exist.
+    - Tested: New CLI + unit tests (`tests/unit/test_cli_config.py`) covering show/validate/set flows against temp LOGFORGE_HOME; suite (`ruff`, `black --check`, `pytest`, `mypy`) run.
+    - Files: `src/logforge/cli/config.py`, `tests/unit/test_cli_config.py`
+    - Notes: Currently operates on local files; will switch to API once configuration endpoints land.
+    - Date: 2025-11-23
   - Acceptance: Commands work via API calls, display/update config correctly
   - Dependencies: Configuration loader, API endpoints
   - Notes: CLI is thin wrapper around API
@@ -1422,4 +1427,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
     - Delivered schema-backed default config builder/writer with directory scaffolding helpers and overwrite safety checks.
 - ✅ Completed: Interactive init wizard (Configuration Management)
   - Implemented `logforge init` command with an interactive wizard plus CLI tests and configurable defaults feeding the config/entity generators.
+- ✅ Completed: Config CLI commands (Configuration Management)
+  - Added Typer subcommands for `config show/set/validate`, leveraging schema validation and file-based mutations pending API endpoints, with comprehensive CLI tests.
 
