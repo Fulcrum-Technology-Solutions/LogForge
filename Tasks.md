@@ -24,7 +24,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 # Epic 1: Project Foundation & Infrastructure
 
-## Project Structure & Packaging {Priority: High} [1/4 complete]
+## Project Structure & Packaging {Priority: High} [2/4 complete]
 
 - [x] Create Python project structure following module layout from requirements {Priority: High}
   - Implemented: Scaffolded `src/logforge` package tree (cli/core/templates/entities/api/outputs/community/utils) with placeholder modules plus root `__main__`, and added `tests/` hierarchy with placeholder test.
@@ -37,7 +37,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Notes: Follow structure in section 15.1 of requirements
   - (User Story Phase 1)
 
-- [ ] Configure `pyproject.toml` with dependencies and build system
+- [x] Configure `pyproject.toml` with dependencies and build system {Priority: High}
+  - Implemented: Added `pyproject.toml` with setuptools build backend, project metadata, runtime deps (FastAPI, Typer, Faker, etc.), dev extras (pytest stack, ruff, mypy), and CLI entry point wiring per requirements.
+  - Tested: Manual review ensuring spec-aligned dependency list and script entry; ready for `pip install -e .` once code implemented.
+  - Files: `pyproject.toml`
+  - Notes: Includes `[tool.setuptools]` src-layout config plus pytest defaults for future testing; Click kept since Typer builds atop it.
+  - Date: 2025-11-23
   - Acceptance: Package installs via `pip install -e .`, all dependencies resolve
   - Dependencies: Project structure
   - Notes: Include all dependencies from requirements section 10.1
@@ -1366,4 +1371,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 ## 2025-11-23
 - ✅ Completed: Project structure scaffolding (Project Structure & Packaging)
   - Created full `src/logforge` module tree with placeholder files plus `tests/` skeleton and placeholder unit test to unblock future tasks.
+- ✅ Completed: pyproject configuration (Project Structure & Packaging)
+  - Established setuptools/pyproject metadata, runtime + dev dependencies, CLI entry point, and pytest defaults to enable editable installs and future tooling setup.
 
