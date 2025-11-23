@@ -115,18 +115,78 @@ class Generator:
         self.stop()
         self.start()
 
+    def _is_transient_error(self, exc: Exception) -> bool:
+        """Determine if an error is transient and should be retried."""
+        error_type = type(exc).__name__
+        error_msg = str(exc).lower()
+
+        # Configuration errors are not transient
+        if "not found" in error_msg and "template" in error_msg:
+            return False
+        if "validation" in error_msg or "invalid" in error_msg:
+            return False
+        if "syntax" in error_msg:
+            return False
+
+        # Network/IO errors are typically transient
+        if any(keyword in error_type.lower() for keyword in ["timeout", "connection", "network"]):
+            return True
+        if any(keyword in error_msg for keyword in ["timeout", "connection", "network", "temporary"]):
+            return True
+
+        # Default: treat as transient (can be retried)
+        return True
+
     def _run_loop(self) -> None:
         self.state = GeneratorState.RUNNING
+        consecutive_errors = 0
+        max_consecutive_errors = 10
+
         while not self._stop_event.is_set():
             rate = self.frequency.current_rate()
             pause = 1.0 / max(rate, 1)
             iteration_started = time.monotonic()
             try:
                 self.generate_once()
+                consecutive_errors = 0  # Reset on success
+                if self.state == GeneratorState.DEGRADED:
+                    # Recovered from degraded state
+                    self._logger.info("Generator '%s' recovered from degraded state", self.config.name)
+                    self.state = GeneratorState.RUNNING
             except Exception as exc:  # pragma: no cover - error path
-                self._logger.exception("Generator '%s' failed: %s", self.config.name, exc)
-                self.state = GeneratorState.ERROR
-                break
+                consecutive_errors += 1
+                is_transient = self._is_transient_error(exc)
+
+                if not is_transient:
+                    # Configuration error - stop generator
+                    self._logger.error(
+                        "Generator '%s' encountered configuration error: %s",
+                        self.config.name,
+                        exc,
+                    )
+                    self.state = GeneratorState.ERROR
+                    break
+                elif consecutive_errors >= max_consecutive_errors:
+                    # Too many consecutive errors - enter ERROR state
+                    self._logger.error(
+                        "Generator '%s' exceeded max consecutive errors (%d), entering ERROR state",
+                        self.config.name,
+                        max_consecutive_errors,
+                    )
+                    self.state = GeneratorState.ERROR
+                    break
+                else:
+                    # Transient error - continue but mark as degraded
+                    self._logger.warning(
+                        "Generator '%s' transient error (%d/%d): %s",
+                        self.config.name,
+                        consecutive_errors,
+                        max_consecutive_errors,
+                        exc,
+                    )
+                    if self.state == GeneratorState.RUNNING:
+                        self.state = GeneratorState.DEGRADED
+
             elapsed = time.monotonic() - iteration_started
             remaining = max(0.0, pause - elapsed)
             self._stop_event.wait(remaining)
@@ -134,28 +194,43 @@ class Generator:
             self.state = GeneratorState.STOPPED
 
     def generate_once(self) -> None:
-        event = self.renderer.render(
-            self.config.template,
-            {"generator": self.config.name},
-        )
+        try:
+            event = self.renderer.render(
+                self.config.template,
+                {"generator": self.config.name},
+            )
+        except Exception as exc:
+            # Template rendering errors are usually configuration issues
+            self.stats.errors += 1
+            raise
+
         timestamp = datetime.now(timezone.utc).isoformat()
         metadata: Metadata = {
             "generator": self.config.name,
             "timestamp": timestamp,
         }
+
+        output_errors = 0
         for output in self.outputs:
             try:
                 output.emit(event, metadata)
             except Exception as exc:  # pragma: no cover - error path
-                self._logger.exception(
+                output_errors += 1
+                self._logger.warning(
                     "Generator '%s' output '%s' failed: %s",
                     self.config.name,
                     output.name,
                     exc,
                 )
-                self.stats.errors += 1
-                self.state = GeneratorState.DEGRADED
-                raise
+                # Don't raise - continue to other outputs
+                # The error will be handled by the retry logic in the output handler
+
+        if output_errors > 0:
+            self.stats.errors += output_errors
+            # If all outputs failed, this is a problem
+            if output_errors == len(self.outputs):
+                raise RuntimeError(f"All outputs failed for generator '{self.config.name}'")
+
         self.stats.events_generated += 1
         self.stats.last_event = timestamp
 

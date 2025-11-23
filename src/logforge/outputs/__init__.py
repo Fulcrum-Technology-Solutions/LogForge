@@ -54,6 +54,9 @@ def build_output(
             headers=definition.headers,
             retry_policy=policy,
             buffer_size=buffer_size,
+            batch_size=definition.batch_size,
+            batch_interval=definition.batch_interval,
+            timeout=definition.timeout or 30,
         )
     if output_type == "tcp":
         if not definition.host or not definition.port:
@@ -74,6 +77,10 @@ def build_output(
             host=definition.host,
             port=definition.port,
             protocol=definition.protocol or "udp",
+            format=definition.syslog_format or "rfc5424",
+            facility=definition.facility or 16,  # LOCAL0
+            severity=definition.severity or 6,  # INFO
+            app_name=definition.app_name,
             retry_policy=policy,
             buffer_size=buffer_size,
         )
