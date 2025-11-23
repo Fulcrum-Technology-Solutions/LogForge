@@ -67,7 +67,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
 
-## Configuration Management {Priority: High} [3/6 complete]
+## Configuration Management {Priority: High} [4/6 complete]
 
 - [x] Implement YAML configuration loader with environment variable substitution {Priority: High}
   - Implemented: Added recursive loader in `core/config.py` that reads `config.yaml`, enforces location under `LOGFORGE_HOME`, substitutes `${LOGFORGE_HOME}` and other `${VAR}` tokens, expands `~`, and returns a processed dictionary for later Pydantic validation.
@@ -89,7 +89,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Configuration loader
   - Notes: Validate all sections (api, engine, entity_registry, templates, outputs, generators)
 
-- [x] Implement `LOGFORGE_HOME` resolution logic {Priority: High}
+ - [x] Implement `LOGFORGE_HOME` resolution logic {Priority: High}
   - Implemented: Added `core/home.py` with `resolve_logforge_home` that honors explicit overrides, `LOGFORGE_HOME` env var, service mode flag/user detection, and defaults to `~/.logforge` or `/var/lib/logforge` per requirements; integrated loader to use it.
   - Tested: Added `tests/unit/test_home_resolution.py` covering env overrides, service flag, username detection, and interactive default, plus full suite (`ruff`, `black --check`, `pytest`, `mypy`).
   - Files: `src/logforge/core/home.py`, `src/logforge/core/config.py`, `tests/unit/test_home_resolution.py`
@@ -99,7 +99,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Configuration loader
   - Notes: Check user context (interactive vs service account)
 
-- [ ] Create default configuration generator for `logforge init`
+- [x] Create default configuration generator for `logforge init` {Priority: High}
+  - Implemented: Added `core/default_config.py` to assemble default config dictionaries, ensure directory scaffolding, and persist YAML safely (no overwrite unless requested); defaults aligned with spec (templates, outputs, generators).
+  - Tested: `tests/unit/test_default_config_generator.py` verifies dict validity, file writing/validation, overwrite protection, and directory creation; ran `ruff`, `black --check`, `pytest`, `mypy`.
+  - Files: `src/logforge/core/default_config.py`, `tests/unit/test_default_config_generator.py`
+  - Notes: Uses schema validator to guarantee generated config remains compliant as models evolve.
+  - Date: 2025-11-23
   - Acceptance: `logforge init` creates valid config.yaml with sensible defaults
   - Dependencies: Configuration schema, LOGFORGE_HOME resolution
   - Notes: Include all required sections with defaults from requirements
@@ -1402,10 +1407,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Added Makefile + lint/typecheck configs, installed dev dependencies, and validated `ruff`, `black`, `pytest`, `mypy` runs for baseline CI readiness.
 - ✅ Completed: CLI entry & version command (Project Structure & Packaging)
   - Delivered Typer CLI scaffold (`logforge --help/--version`), subcommand grouping, helper messaging, unit tests, and metadata-driven `__version__` propagation.
-- ✅ Completed: Config loader w/ env substitution (Configuration Management)
-  - Implemented YAML loader with `${VAR}` expansion + safety checks, plus unit tests for env substitution, path enforcement, and `~` expansion.
-- ✅ Completed: LOGFORGE_HOME resolver (Configuration Management)
-  - Added service/interactive home detection module with env/user heuristics, wired into loader, and covered with dedicated unit tests.
-- ✅ Completed: Config schema validation (Configuration Management)
-  - Built comprehensive Pydantic models for all config sections, added validation helpers + tests covering invalid ports, generators, outputs, and frequency rules, ensuring misconfigurations fail fast.
+  - ✅ Completed: Config loader w/ env substitution (Configuration Management)
+    - Implemented YAML loader with `${VAR}` expansion + safety checks, plus unit tests for env substitution, path enforcement, and `~` expansion.
+  - ✅ Completed: LOGFORGE_HOME resolver (Configuration Management)
+    - Added service/interactive home detection module with env/user heuristics, wired into loader, and covered with dedicated unit tests.
+  - ✅ Completed: Config schema validation (Configuration Management)
+    - Added Pydantic config models, loader integration, and regression tests for invalid ports, outputs, generators, and frequency definitions.
+  - ✅ Completed: Default config generator (Configuration Management)
+    - Delivered schema-backed default config builder/writer with directory scaffolding helpers and overwrite safety checks.
 
