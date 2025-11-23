@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logforge"
+version = "1.0.0"
+description = "Synthetic event log generator with template-based architecture"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "John Owen", email = "john@ftsc.com" }
+]
+
+dependencies = [
+  "jinja2>=3.1.0",
+  "pyyaml>=6.0",
+  "typer>=0.12.3",
+  "click>=8.1.0",
+  "requests>=2.31.0",
+  "python-dateutil>=2.8.0",
+  "fastapi>=0.109.0",
+  "uvicorn>=0.27.0",
+  "prometheus-client>=0.19.0",
+  "pydantic>=2.5.0",
+  "faker>=22.0.0",
+    "email-validator>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "pytest-asyncio>=0.23.0",
+  "pytest-mock>=3.12.0",
+  "black>=23.12.0",
+  "ruff>=0.1.0",
+  "mypy>=1.8.0",
+  "httpx>=0.26.0",
+  "types-PyYAML>=6.0.12",
+  "types-requests>=2.31.0",
+]
+
+[project.scripts]
+logforge = "logforge.cli.main:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = "\\.pyi?$"
+skip-string-normalization = true
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
