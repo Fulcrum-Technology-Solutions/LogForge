@@ -24,7 +24,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 # Epic 1: Project Foundation & Infrastructure
 
-## Project Structure & Packaging {Priority: High} [3/4 complete]
+## Project Structure & Packaging {Priority: High} [4/4 complete]
 
 - [x] Create Python project structure following module layout from requirements {Priority: High}
   - Implemented: Scaffolded `src/logforge` package tree (cli/core/templates/entities/api/outputs/community/utils) with placeholder modules plus root `__main__`, and added `tests/` hierarchy with placeholder test.
@@ -57,7 +57,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: pyproject.toml
   - Notes: Configure in `[project.optional-dependencies]`
 
-- [ ] Create package entry points and CLI command registration
+- [x] Create package entry points and CLI command registration {Priority: High}
+  - Implemented: Built Typer-based CLI with global context, `--version` flag, subcommand groups (config/templates/entities/generators/outputs), helper messaging, and metadata-driven version lookup. Updated `__main__` entry to run the Typer app.
+  - Tested: Added CLI unit tests using `typer.testing.CliRunner` for `--version` and `--help`; ran `ruff`, `black --check`, `pytest`, and `mypy` to verify lint/format/tests/type-checking.
+  - Files: `src/logforge/__init__.py`, `src/logforge/__main__.py`, `src/logforge/cli/{__init__,main,helpers,config,templates,entities,generators,outputs}.py`, `tests/unit/test_cli_main.py`
+  - Notes: Subcommands still stubs but wired for future API-backed implementations per roadmap.
+  - Date: 2025-11-23
   - Acceptance: `logforge --version` and `logforge --help` work
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
@@ -1380,4 +1385,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Established setuptools/pyproject metadata, runtime + dev dependencies, CLI entry point, and pytest defaults to enable editable installs and future tooling setup.
 - ✅ Completed: Dev tooling setup (Project Structure & Packaging)
   - Added Makefile + lint/typecheck configs, installed dev dependencies, and validated `ruff`, `black`, `pytest`, `mypy` runs for baseline CI readiness.
+- ✅ Completed: CLI entry & version command (Project Structure & Packaging)
+  - Delivered Typer CLI scaffold (`logforge --help/--version`), subcommand grouping, helper messaging, unit tests, and metadata-driven `__version__` propagation.
 
