@@ -1,5 +1,0 @@
-class GeneratorControlResponse(BaseModel):
-    name: str
-    state: str
-    message: str***
-
