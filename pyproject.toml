@@ -49,6 +49,12 @@ package-dir = { "" = "src" }
 where = ["src"]
 exclude = ["tests"]
 
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = "\\.pyi?$"
+skip-string-normalization = true
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]

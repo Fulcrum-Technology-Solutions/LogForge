@@ -24,7 +24,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 # Epic 1: Project Foundation & Infrastructure
 
-## Project Structure & Packaging {Priority: High} [2/4 complete]
+## Project Structure & Packaging {Priority: High} [3/4 complete]
 
 - [x] Create Python project structure following module layout from requirements {Priority: High}
   - Implemented: Scaffolded `src/logforge` package tree (cli/core/templates/entities/api/outputs/community/utils) with placeholder modules plus root `__main__`, and added `tests/` hierarchy with placeholder test.
@@ -47,7 +47,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure
   - Notes: Include all dependencies from requirements section 10.1
 
-- [ ] Set up development dependencies and tooling
+- [x] Set up development dependencies and tooling {Priority: High}
+  - Implemented: Added `Makefile`, `ruff.toml`, `mypy.ini`, and Black config in `pyproject.toml`; installed project with `pip install -e ".[dev]"` to ensure runtime/dev deps available.
+  - Tested: Ran `ruff check src tests`, `black --check src tests`, `pytest`, and `mypy src` to confirm tooling executes successfully.
+  - Files: `Makefile`, `ruff.toml`, `mypy.ini`, `pyproject.toml`
+  - Notes: Make targets wrap install/lint/format/test/typecheck workflows for future CI integration.
+  - Date: 2025-11-23
   - Acceptance: `pytest`, `black`, `ruff`, `mypy` install and run
   - Dependencies: pyproject.toml
   - Notes: Configure in `[project.optional-dependencies]`
@@ -1373,4 +1378,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Created full `src/logforge` module tree with placeholder files plus `tests/` skeleton and placeholder unit test to unblock future tasks.
 - ✅ Completed: pyproject configuration (Project Structure & Packaging)
   - Established setuptools/pyproject metadata, runtime + dev dependencies, CLI entry point, and pytest defaults to enable editable installs and future tooling setup.
+- ✅ Completed: Dev tooling setup (Project Structure & Packaging)
+  - Added Makefile + lint/typecheck configs, installed dev dependencies, and validated `ruff`, `black`, `pytest`, `mypy` runs for baseline CI readiness.
 

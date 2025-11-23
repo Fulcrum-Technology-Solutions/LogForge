@@ -1,0 +1,2 @@
+[console_scripts]
+logforge = logforge.cli.main:main
