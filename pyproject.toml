@@ -42,8 +42,20 @@ logforge = "logforge.cli.main:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools.packages]
+# Explicitly list packages to ensure all are included (more reliable than find)
+packages = [
+    "logforge",
+    "logforge.api",
+    "logforge.api.endpoints",
+    "logforge.cli",
+    "logforge.community",
+    "logforge.core",
+    "logforge.entities",
+    "logforge.outputs",
+    "logforge.templates",
+    "logforge.utils",
+]
 
 [tool.black]
 line-length = 100
