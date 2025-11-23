@@ -67,7 +67,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
 
-## Configuration Management {Priority: High} [4/6 complete]
+## Configuration Management {Priority: High} [5/6 complete]
 
 - [x] Implement YAML configuration loader with environment variable substitution {Priority: High}
   - Implemented: Added recursive loader in `core/config.py` that reads `config.yaml`, enforces location under `LOGFORGE_HOME`, substitutes `${LOGFORGE_HOME}` and other `${VAR}` tokens, expands `~`, and returns a processed dictionary for later Pydantic validation.
@@ -109,7 +109,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Configuration schema, LOGFORGE_HOME resolution
   - Notes: Include all required sections with defaults from requirements
 
-- [ ] Implement interactive wizard for `logforge init --interactive`
+- [x] Implement interactive wizard for `logforge init --interactive` {Priority: High}
+  - Implemented: Added Typer-based `logforge init` command with `--interactive` wizard prompting for org info, log dir, API port, base rate, and starter templates plus configurable overrides feeding into the default config generator; config/entities files written safely under the resolved LOGFORGE_HOME.
+  - Tested: New CLI test covers `logforge init` execution with custom LOGFORGE_HOME; default config generator tests updated for option overrides, file writes, overwrite protection, and entity scaffolding; ran `ruff`, `black --check`, `pytest`, and `mypy`.
+  - Files: `src/logforge/cli/main.py`, `src/logforge/core/default_config.py`, `tests/unit/test_cli_main.py`, `tests/unit/test_default_config_generator.py`
+  - Notes: Template install prompt currently informational pending future download support.
+  - Date: 2025-11-23
   - Acceptance: Wizard prompts for org name, domain, output dir, API port, template install
   - Dependencies: Default config generator
   - Notes: Optional enhancement, can be deferred
@@ -1415,4 +1420,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
     - Added Pydantic config models, loader integration, and regression tests for invalid ports, outputs, generators, and frequency definitions.
   - ✅ Completed: Default config generator (Configuration Management)
     - Delivered schema-backed default config builder/writer with directory scaffolding helpers and overwrite safety checks.
+- ✅ Completed: Interactive init wizard (Configuration Management)
+  - Implemented `logforge init` command with an interactive wizard plus CLI tests and configurable defaults feeding the config/entity generators.
 

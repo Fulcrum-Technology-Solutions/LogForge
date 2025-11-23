@@ -17,3 +17,10 @@ def test_cli_help_lists_subcommands() -> None:
     assert result.exit_code == 0
     assert "templates" in result.stdout
     assert "generators" in result.stdout
+
+
+def test_cli_init_non_interactive(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("LOGFORGE_HOME", str(tmp_path))
+    result = runner.invoke(app, ["init", "--overwrite"])
+    assert result.exit_code == 0
+    assert (tmp_path / "config.yaml").exists()

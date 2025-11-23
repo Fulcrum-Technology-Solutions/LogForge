@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -11,14 +12,28 @@ from logforge.core.config import CONFIG_FILENAME, ConfigError, validate_config_d
 from logforge.core.home import resolve_logforge_home
 
 
-def build_default_config_dict(logforge_home: Path | None = None) -> Mapping[str, Any]:
+@dataclass
+class DefaultConfigOptions:
+    organization_name: str = "Example Corporation"
+    organization_domain: str = "example.com"
+    log_output_dir: Path = Path("/var/log/logforge")
+    api_port: int = 8080
+    base_rate: int = 10
+    install_templates: bool = True
+
+
+def build_default_config_dict(
+    logforge_home: Path | None = None,
+    options: DefaultConfigOptions | None = None,
+) -> Mapping[str, Any]:
     """Create an in-memory configuration dictionary with sensible defaults."""
 
+    opts = options or DefaultConfigOptions()
     home = resolve_logforge_home(override=logforge_home)
     templates_dir = home / "templates"
     default_templates = templates_dir / "default"
     custom_templates = templates_dir / "custom"
-    outputs_dir = Path("/var/log/logforge")
+    outputs_dir = opts.log_output_dir
     entities_path = home / "entities.yaml"
 
     config = {
@@ -31,7 +46,7 @@ def build_default_config_dict(logforge_home: Path | None = None) -> Mapping[str,
         "api": {
             "enabled": True,
             "host": "127.0.0.1",
-            "port": 8080,
+            "port": opts.api_port,
             "auth": {"enabled": False, "key": None},
         },
         "entity_registry": {
@@ -92,7 +107,7 @@ def build_default_config_dict(logforge_home: Path | None = None) -> Mapping[str,
                 "template": "microsoft/windows/eventlog/security",
                 "enabled": True,
                 "outputs": ["default_file", "console_json"],
-                "frequency": {"base_rate": 10},
+                "frequency": {"base_rate": opts.base_rate},
             }
         ],
     }
@@ -106,6 +121,7 @@ def write_default_config(
     logforge_home: Path | None = None,
     destination: Path | None = None,
     overwrite: bool = False,
+    options: DefaultConfigOptions | None = None,
 ) -> Path:
     """Persist default configuration to disk."""
 
@@ -119,10 +135,12 @@ def write_default_config(
 
     ensure_default_directories(home)
 
-    config_dict = build_default_config_dict(home)
+    config_dict = build_default_config_dict(home, options)
 
     with dest.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(config_dict, handle, sort_keys=False)
+
+    write_default_entities(home, options, overwrite=overwrite)
 
     return dest
 
@@ -140,4 +158,44 @@ def ensure_default_directories(home: Path | None = None) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-__all__ = ["build_default_config_dict", "write_default_config", "ensure_default_directories"]
+def write_default_entities(
+    home: Path | None = None,
+    options: DefaultConfigOptions | None = None,
+    *,
+    overwrite: bool = False,
+) -> Path:
+    """Create a starter entities.yaml file."""
+
+    opts = options or DefaultConfigOptions()
+    resolved_home = resolve_logforge_home(override=home)
+    path = resolved_home / "entities.yaml"
+    if path.exists() and not overwrite:
+        return path
+
+    entities = {
+        "organization": {
+            "name": opts.organization_name,
+            "domain": opts.organization_domain,
+            "contacts": {
+                "admin": f"admin@{opts.organization_domain}",
+                "security": f"security@{opts.organization_domain}",
+            },
+        },
+        "users": [],
+        "devices": [],
+        "services": [],
+    }
+
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(entities, handle, sort_keys=False)
+
+    return path
+
+
+__all__ = [
+    "DefaultConfigOptions",
+    "build_default_config_dict",
+    "write_default_config",
+    "ensure_default_directories",
+    "write_default_entities",
+]
