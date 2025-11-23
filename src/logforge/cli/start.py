@@ -14,7 +14,7 @@ from logforge.utils.logging import setup_logging
 
 LOGGER = logging.getLogger(__name__)
 
-app = typer.Typer(help="Start the LogForge service.")
+app = typer.Typer(help="Start the LogForge service.", invoke_without_command=True)
 
 
 def _start_service(
@@ -126,8 +126,9 @@ def _start_service(
         LOGGER.info("LogForge shutdown complete")
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
 def start(
+    ctx: typer.Context,
     service: bool = typer.Option(
         False,
         "--service",
@@ -140,5 +141,6 @@ def start(
     ),
 ) -> None:
     """Start the LogForge service with embedded API server."""
-    _start_service(service_mode=service, config_path=config)
+    if ctx.invoked_subcommand is None:
+        _start_service(service_mode=service, config_path=config)
 
