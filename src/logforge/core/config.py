@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any, Mapping, cast
 
 import yaml
+from pydantic import ValidationError
 
+from logforge.core.config_schema import ConfigModel, summarize_validation_error
 from logforge.core.home import resolve_logforge_home
 
 ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")
@@ -53,6 +55,28 @@ def load_config(
 
     processed = cast(ConfigDict, _walk_and_replace(raw_data, replacements))
     return processed
+
+
+def load_validated_config(
+    config_path: Path | None = None,
+    *,
+    logforge_home: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> ConfigModel:
+    """Load configuration from disk and validate against the schema."""
+
+    raw_config = load_config(config_path, logforge_home=logforge_home, env=env)
+    return validate_config_dict(raw_config)
+
+
+def validate_config_dict(data: Mapping[str, Any]) -> ConfigModel:
+    """Validate configuration dictionary and return ConfigModel."""
+
+    try:
+        return ConfigModel.model_validate(data)
+    except ValidationError as exc:  # pragma: no cover - Pydantic gives detailed errors
+        message = summarize_validation_error(exc)
+        raise ConfigError(f"Configuration validation failed: {message}") from exc
 
 
 def _resolve_config_path(config_path: Path | None, home: Path) -> Path:
@@ -101,4 +125,10 @@ def _substitute_env_vars(template: str, replacements: Mapping[str, str]) -> str:
     return ENV_VAR_PATTERN.sub(_repl, template)
 
 
-__all__ = ["ConfigError", "load_config", "CONFIG_FILENAME"]
+__all__ = [
+    "ConfigError",
+    "load_config",
+    "load_validated_config",
+    "validate_config_dict",
+    "CONFIG_FILENAME",
+]

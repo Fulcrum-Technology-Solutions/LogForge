@@ -67,7 +67,7 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
 
-## Configuration Management {Priority: High} [2/6 complete]
+## Configuration Management {Priority: High} [3/6 complete]
 
 - [x] Implement YAML configuration loader with environment variable substitution {Priority: High}
   - Implemented: Added recursive loader in `core/config.py` that reads `config.yaml`, enforces location under `LOGFORGE_HOME`, substitutes `${LOGFORGE_HOME}` and other `${VAR}` tokens, expands `~`, and returns a processed dictionary for later Pydantic validation.
@@ -79,7 +79,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure
   - Notes: Support `${VAR}` and `~/.logforge` expansion
 
-- [ ] Create configuration schema validator (Pydantic models)
+- [x] Create configuration schema validator (Pydantic models) {Priority: High}
+  - Implemented: Added Pydantic models for all config sections (`core/config_schema.py`) plus helpers to validate dictionaries and integrated `load_validated_config` in `core/config.py`.
+  - Tested: Added unit tests covering valid configs, invalid API port, missing outputs, missing generators, and invalid frequency days; ran `ruff`, `black --check`, `pytest`, and `mypy`.
+  - Files: `src/logforge/core/config_schema.py`, `src/logforge/core/config.py`, `tests/unit/test_config_schema.py`
+  - Notes: Validation errors now surface as `ConfigError` with precise field context; supports optional future extension.
+  - Date: 2025-11-23
   - Acceptance: Invalid configs rejected with clear error messages
   - Dependencies: Configuration loader
   - Notes: Validate all sections (api, engine, entity_registry, templates, outputs, generators)
@@ -1401,4 +1406,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Implemented YAML loader with `${VAR}` expansion + safety checks, plus unit tests for env substitution, path enforcement, and `~` expansion.
 - ✅ Completed: LOGFORGE_HOME resolver (Configuration Management)
   - Added service/interactive home detection module with env/user heuristics, wired into loader, and covered with dedicated unit tests.
+- ✅ Completed: Config schema validation (Configuration Management)
+  - Built comprehensive Pydantic models for all config sections, added validation helpers + tests covering invalid ports, generators, outputs, and frequency rules, ensuring misconfigurations fail fast.
 
