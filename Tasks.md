@@ -369,10 +369,8 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 ## Community Integration {Priority: Medium}
 
-- [ ] Create community API client (HTTP client)
-  - Acceptance: Connects to `https://api.logforge.io/v1`, handles errors
-  - Dependencies: HTTP client library
-  - Notes: Client in `community/client.py`
+- [x] Create community API client (HTTP client)
+  - Implemented: `community/client.py` now provides `CommunityClient` with search/detail/download support, API key handling, and error wrapping.
 
 - [ ] Implement template search functionality
   - Acceptance: Searches remote templates by query, vendor, product
