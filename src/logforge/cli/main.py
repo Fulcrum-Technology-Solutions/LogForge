@@ -10,6 +10,7 @@ import typer
 
 from logforge import __version__
 from logforge.cli import config, entities, generators, outputs, templates
+from logforge.cli.api_client import APIClient
 from logforge.core.default_config import DefaultConfigOptions, write_default_config
 
 
@@ -20,6 +21,12 @@ class CLIContext:
     api_url: str
     api_key: Optional[str]
     output_format: str
+    _client: Optional[APIClient] = None
+
+    def client(self) -> APIClient:
+        if self._client is None:
+            self._client = APIClient(self.api_url, self.api_key)
+        return self._client
 
 
 def _create_app() -> typer.Typer:

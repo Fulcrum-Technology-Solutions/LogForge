@@ -81,6 +81,20 @@ def test_metrics_endpoint_returns_plain_text() -> None:
     assert resp.text.startswith("test_metric")
 
 
+def test_entities_endpoints() -> None:
+    deps = make_dependencies()
+    deps.entities_summary = lambda: {"users": 1}
+    deps.list_entities = lambda entity_type: [{"username": "jsmith"}]
+    deps.create_entity = lambda entity_type, payload: payload | {"id": 1}
+    app = create_app(dependencies=deps)
+    client = TestClient(app)
+    assert client.get("/api/entities").json()["users"] == 1
+    assert client.get("/api/entities/users").json()["count"] == 1
+    resp = client.post("/api/entities/users", json={"username": "mary"})
+    assert resp.status_code == 201
+    assert resp.json()["id"] == 1
+
+
 def test_api_server_start_stop() -> None:
     app = create_app()
     with mock.patch("uvicorn.Server.run", return_value=None) as run_mock:

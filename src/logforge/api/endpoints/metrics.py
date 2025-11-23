@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from fastapi import APIRouter, Depends, Response
 
 if TYPE_CHECKING:
     from logforge.api.server import APIDependencies
 
+AuthDependency = Callable[..., Awaitable[None]]
 
-def create_metrics_router(deps: "APIDependencies", auth_dependency):
+
+def create_metrics_router(deps: "APIDependencies", auth_dependency: AuthDependency) -> APIRouter:
     router = APIRouter()
 
     @router.get("/metrics", tags=["metrics"], response_class=Response)

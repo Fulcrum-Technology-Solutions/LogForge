@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Awaitable, Callable, Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 
-def build_auth_dependency(enabled: bool, api_key: str | None):
+def build_auth_dependency(enabled: bool, api_key: Optional[str]) -> Callable[..., Awaitable[None]]:
     """Return a FastAPI dependency enforcing optional API key auth."""
 
     security = HTTPBearer(auto_error=False)

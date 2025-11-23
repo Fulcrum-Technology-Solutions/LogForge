@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import uvicorn
 from fastapi import FastAPI
 from prometheus_client import Counter, Gauge, generate_latest
 
 from logforge.api.auth import build_auth_dependency
+from logforge.api.endpoints.entities import create_entities_router
 from logforge.api.endpoints.health import create_health_router
 from logforge.api.endpoints.metrics import create_metrics_router
 from logforge.api.models import (
@@ -20,6 +21,7 @@ from logforge.api.models import (
     HealthResponse,
     StatusResponse,
     SystemMetrics,
+    FrequencyInfo,
 )
 
 
@@ -30,15 +32,21 @@ class APIDependencies:
     get_metrics: Callable[[], bytes]
     on_startup: Callable[[], None] = lambda: None
     on_shutdown: Callable[[], None] = lambda: None
+    entities_summary: Callable[[], dict[str, Any]] = lambda: {}
+    list_entities: Callable[[str], list[dict[str, Any]]] = lambda _t: []
+    create_entity: Callable[[str, dict[str, Any]], dict[str, Any]] = lambda _t, data: data
 
 
 def default_dependencies() -> APIDependencies:
+    from logforge.entities.registry import EntityRegistry
+
+    registry = EntityRegistry()
     generators = [
         GeneratorStatus(
             name="windows_security",
             state="RUNNING",
             template="microsoft/windows/eventlog/security",
-            frequency={"base_rate": 10, "current_rate": 10},
+            frequency=FrequencyInfo(base_rate=10, current_rate=10),
             outputs=["default_file"],
             statistics=GeneratorStatistics(events_generated=0, errors=0, uptime=0),
         )
@@ -72,7 +80,14 @@ def default_dependencies() -> APIDependencies:
         health_gauge.labels("error").set(health_summary.generators.error)
         return generate_latest()
 
-    return APIDependencies(get_health=health, get_status=status, get_metrics=metrics)
+    return APIDependencies(
+        get_health=health,
+        get_status=status,
+        get_metrics=metrics,
+        entities_summary=registry.summary,
+        list_entities=lambda entity_type: registry.list_entities(entity_type),
+        create_entity=lambda entity_type, payload: registry.add_entity(entity_type, payload),
+    )
 
 
 @dataclass
@@ -103,12 +118,14 @@ def create_app(
 
     health_router = create_health_router(deps, auth_dependency)
     metrics_router = create_metrics_router(deps, auth_dependency)
+    entities_router = create_entities_router(deps, auth_dependency)
 
     app.include_router(health_router, prefix="/api")
     app.include_router(metrics_router, prefix="/api")
+    app.include_router(entities_router, prefix="/api")
 
     @app.get("/api/healthz", include_in_schema=False)
-    async def healthz():
+    async def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.on_event("startup")

@@ -25,6 +25,7 @@ dependencies = [
   "prometheus-client>=0.19.0",
   "pydantic>=2.5.0",
   "faker>=22.0.0",
+    "email-validator>=2.1.0",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,7 @@ dev = [
   "mypy>=1.8.0",
   "httpx>=0.26.0",
   "types-PyYAML>=6.0.12",
+  "types-requests>=2.31.0",
 ]
 
 [project.scripts]
