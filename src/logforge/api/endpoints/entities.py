@@ -1,0 +1,1 @@
+"""Entities endpoint placeholder."""

@@ -1,0 +1,1 @@
+"""HTTP output placeholder."""

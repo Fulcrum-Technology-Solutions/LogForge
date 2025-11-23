@@ -1,0 +1,1 @@
+"""Generators CLI placeholder."""

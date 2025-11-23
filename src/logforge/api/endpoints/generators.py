@@ -1,0 +1,1 @@
+"""Generators endpoint placeholder."""
