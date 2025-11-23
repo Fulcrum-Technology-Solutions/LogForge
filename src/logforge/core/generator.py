@@ -13,6 +13,12 @@ from typing import Any, Dict, List, Optional, Protocol
 from logforge.core.config_schema import GeneratorConfig
 from logforge.core.frequency import FrequencyController
 from logforge.outputs.base import BaseOutput, Metadata
+from logforge.utils.metrics import (
+    events_generated_total,
+    generator_errors_total,
+    generators_running,
+    template_render_seconds,
+)
 
 
 class TemplateRendererProtocol(Protocol):
@@ -100,16 +106,20 @@ class Generator:
                 daemon=True,
             )
             self._thread.start()
+            # Update metrics when starting
+            self._update_state_metrics()
 
     def stop(self, timeout: float = 5.0) -> None:
         with self._lock:
             if self._thread is None:
                 self.state = GeneratorState.STOPPED
+                self._update_state_metrics()
                 return
             self._stop_event.set()
             self._thread.join(timeout=timeout)
             self._thread = None
             self.state = GeneratorState.STOPPED
+            self._update_state_metrics()
 
     def restart(self) -> None:
         self.stop()
@@ -139,6 +149,7 @@ class Generator:
 
     def _run_loop(self) -> None:
         self.state = GeneratorState.RUNNING
+        self._update_state_metrics()
         consecutive_errors = 0
         max_consecutive_errors = 10
 
@@ -153,9 +164,12 @@ class Generator:
                     # Recovered from degraded state
                     self._logger.info("Generator '%s' recovered from degraded state", self.config.name)
                     self.state = GeneratorState.RUNNING
+                    self._update_state_metrics()
             except Exception as exc:  # pragma: no cover - error path
                 consecutive_errors += 1
                 is_transient = self._is_transient_error(exc)
+                error_type = type(exc).__name__
+                generator_errors_total.labels(generator=self.config.name, error_type=error_type).inc()
 
                 if not is_transient:
                     # Configuration error - stop generator
@@ -165,6 +179,7 @@ class Generator:
                         exc,
                     )
                     self.state = GeneratorState.ERROR
+                    self._update_state_metrics()
                     break
                 elif consecutive_errors >= max_consecutive_errors:
                     # Too many consecutive errors - enter ERROR state
@@ -174,6 +189,7 @@ class Generator:
                         max_consecutive_errors,
                     )
                     self.state = GeneratorState.ERROR
+                    self._update_state_metrics()
                     break
                 else:
                     # Transient error - continue but mark as degraded
@@ -186,22 +202,29 @@ class Generator:
                     )
                     if self.state == GeneratorState.RUNNING:
                         self.state = GeneratorState.DEGRADED
+                        self._update_state_metrics()
 
             elapsed = time.monotonic() - iteration_started
             remaining = max(0.0, pause - elapsed)
             self._stop_event.wait(remaining)
         if self.state not in {GeneratorState.ERROR, GeneratorState.DEGRADED}:
             self.state = GeneratorState.STOPPED
+            self._update_state_metrics()
 
     def generate_once(self) -> None:
         try:
-            event = self.renderer.render(
-                self.config.template,
-                {"generator": self.config.name},
-            )
+            with template_render_seconds.labels(
+                generator=self.config.name, template=self.config.template
+            ).time():
+                event = self.renderer.render(
+                    self.config.template,
+                    {"generator": self.config.name},
+                )
         except Exception as exc:
             # Template rendering errors are usually configuration issues
             self.stats.errors += 1
+            error_type = type(exc).__name__
+            generator_errors_total.labels(generator=self.config.name, error_type=error_type).inc()
             raise
 
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -233,6 +256,14 @@ class Generator:
 
         self.stats.events_generated += 1
         self.stats.last_event = timestamp
+        events_generated_total.labels(generator=self.config.name).inc()
+
+    def _update_state_metrics(self) -> None:
+        """Update generators_running gauge based on current state."""
+        # Reset all states to 0 for this generator (we track globally)
+        # This is a simplified approach - in a more complex system we'd track per-generator
+        # For now, we rely on the engine to update the global gauge
+        pass
 
     def snapshot(self) -> GeneratorSnapshot:
         return GeneratorSnapshot(

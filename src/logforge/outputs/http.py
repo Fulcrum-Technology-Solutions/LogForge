@@ -33,7 +33,7 @@ class HttpOutput(BaseOutput):
         timeout: int = 30,
         session: Optional[requests.Session] = None,
     ) -> None:
-        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size)
+        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size, output_type="http")
         self.url = url
         self.method = method.upper()
         self.headers = self._resolve_headers(headers or {})

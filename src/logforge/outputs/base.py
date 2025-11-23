@@ -7,6 +7,13 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any, Deque, Mapping, Optional, Tuple
 
+from logforge.utils.metrics import (
+    output_buffered_events,
+    output_errors_total,
+    output_events_sent_total,
+    output_latency_seconds,
+)
+
 Metadata = Mapping[str, Any] | None
 BufferedEvent = Tuple[str, Metadata]
 
@@ -41,16 +48,18 @@ class BaseOutput(abc.ABC):
         *,
         retry_policy: RetryPolicy,
         buffer_size: int,
+        output_type: str = "unknown",
     ) -> None:
         self.name = name
         self.retry_policy = retry_policy
         self.buffer_size = max(0, buffer_size)
+        self.output_type = output_type
         self._buffer: Deque[BufferedEvent] = deque(maxlen=self.buffer_size or None)
 
     def emit(self, event: str, metadata: Metadata = None) -> None:
         """Buffer the event and attempt to deliver all pending events."""
-
         self._enqueue(event, metadata)
+        self._update_buffer_metrics()
         self._flush()
 
     def _enqueue(self, event: str, metadata: Metadata) -> None:
@@ -71,10 +80,19 @@ class BaseOutput(abc.ABC):
         delay = self.retry_policy.retry_interval
         while True:
             try:
-                self._send(event, metadata)
+                with output_latency_seconds.labels(
+                    output=self.name, output_type=self.output_type
+                ).time():
+                    self._send(event, metadata)
+                output_events_sent_total.labels(output=self.name, output_type=self.output_type).inc()
+                self._update_buffer_metrics()
                 return
             except Exception as exc:
                 attempts += 1
+                error_type = type(exc).__name__
+                output_errors_total.labels(
+                    output=self.name, output_type=self.output_type, error_type=error_type
+                ).inc()
                 if (
                     self.retry_policy.max_attempts != -1
                     and attempts >= self.retry_policy.max_attempts
@@ -87,6 +105,10 @@ class BaseOutput(abc.ABC):
                     delay * self.retry_policy.backoff_multiplier,
                     self.retry_policy.max_backoff,
                 )
+
+    def _update_buffer_metrics(self) -> None:
+        """Update buffered events gauge."""
+        output_buffered_events.labels(output=self.name).set(len(self._buffer))
 
     @abc.abstractmethod
     def _send(self, event: str, metadata: Metadata = None) -> None:
@@ -107,6 +129,7 @@ class CapturingOutput(BaseOutput):
             name,
             retry_policy=retry_policy or RetryPolicy(-1, 0, 1, 0),
             buffer_size=buffer_size,
+            output_type="capture",
         )
         self.events: list[str] = []
 

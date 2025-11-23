@@ -7,10 +7,11 @@ from typing import Dict, Iterable, List, Optional
 
 from logforge.core.config_schema import ConfigModel, GeneratorConfig, OutputConfig
 from logforge.core.frequency import FrequencyController
-from logforge.core.generator import Generator, GeneratorSnapshot
+from logforge.core.generator import Generator, GeneratorSnapshot, GeneratorState
 from logforge.outputs import build_output
 from logforge.outputs.base import BaseOutput
 from logforge.templates.renderer import TemplateRenderer
+from logforge.utils.metrics import generators_running
 
 
 class OutputFactory:
@@ -79,26 +80,39 @@ class GeneratorEngine:
     def start(self, name: str) -> GeneratorSnapshot:
         generator = self._get(name)
         generator.start()
+        self._update_generator_metrics()
         return generator.snapshot()
 
     def stop(self, name: str) -> GeneratorSnapshot:
         generator = self._get(name)
         generator.stop()
+        self._update_generator_metrics()
         return generator.snapshot()
 
     def restart(self, name: str) -> GeneratorSnapshot:
         generator = self._get(name)
         generator.restart()
+        self._update_generator_metrics()
         return generator.snapshot()
 
     def start_all(self) -> None:
         for generator in self._generators.values():
             if generator.config.enabled:
                 generator.start()
+        self._update_generator_metrics()
 
     def stop_all(self) -> None:
         for generator in self._generators.values():
             generator.stop()
+        self._update_generator_metrics()
+
+    def _update_generator_metrics(self) -> None:
+        """Update generators_running gauge based on current generator states."""
+        states = {state: 0 for state in GeneratorState}
+        for generator in self._generators.values():
+            states[generator.state] = states.get(generator.state, 0) + 1
+        for state in GeneratorState:
+            generators_running.labels(state=state.value).set(states.get(state, 0))
 
     def list_snapshots(self) -> List[GeneratorSnapshot]:
         return [generator.snapshot() for generator in self._generators.values()]

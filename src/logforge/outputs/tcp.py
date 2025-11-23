@@ -20,7 +20,7 @@ class TcpOutput(BaseOutput):
         buffer_size: int,
         delimiter: str = "\n",
     ) -> None:
-        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size)
+        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size, output_type="tcp")
         self.host = host
         self.port = port
         self.delimiter = delimiter
