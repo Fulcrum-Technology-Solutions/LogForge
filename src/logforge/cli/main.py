@@ -26,23 +26,29 @@ app.add_typer(templates_commands.app, name="templates")
 try:
     from . import start as start_commands
     app.add_typer(start_commands.app, name="start")
-except ImportError as exc:
-    # Service commands unavailable - log but don't fail
+except Exception as exc:
+    # Start command unavailable - log but don't fail
     # Commands like 'init' will still work
     import logging
+    import sys
     logger = logging.getLogger(__name__)
-    logger.debug("Start command unavailable: %s - package may need reinstalling", exc)
+    # Log the full error for debugging
+    logger.warning("Start command unavailable: %s", exc, exc_info=True)
+    # Also print to stderr if in verbose mode (helps with debugging)
+    if "--verbose" in sys.argv or "-v" in sys.argv:
+        import sys as sys_module
+        print(f"Warning: 'start' command unavailable: {exc}", file=sys_module.stderr)
     # If someone tries to use 'start', they'll get "command not found" which is acceptable
 
 try:
     from . import service as service_commands
     app.add_typer(service_commands.app, name="service")
-except ImportError as exc:
+except (ImportError, ModuleNotFoundError) as exc:
     # Service commands unavailable - log but don't fail
     # Commands like 'init' will still work
     import logging
     logger = logging.getLogger(__name__)
-    logger.debug("Service command unavailable: %s - package may need reinstalling", exc)
+    logger.debug("Service command unavailable: %s - package may need reinstalling", exc, exc_info=True)
     # If someone tries to use 'service', they'll get "command not found" which is acceptable
 
 

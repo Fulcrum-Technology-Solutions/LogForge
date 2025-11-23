@@ -26,7 +26,7 @@ git clone https://github.com/your-org/logforge.git
 cd logforge
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip  # Required for PEP 660 support (pip 21.3+)
+python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 

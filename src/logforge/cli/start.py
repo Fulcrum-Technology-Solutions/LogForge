@@ -9,7 +9,6 @@ from typing import Optional
 import typer
 
 from logforge import __version__
-from logforge.api.server import ManagementAPIServer
 from logforge.core.config import ConfigError, load_config
 from logforge.utils.logging import setup_logging
 
@@ -23,6 +22,9 @@ def _start_service(
     config_path: Optional[str] = None,
 ) -> None:
     """Start the LogForge service with embedded API server."""
+    # Lazy import to avoid loading heavy dependencies until command is invoked
+    from logforge.api.server import ManagementAPIServer
+    
     try:
         from pathlib import Path
 
