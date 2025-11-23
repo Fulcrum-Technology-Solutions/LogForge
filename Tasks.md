@@ -67,9 +67,14 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Project structure, CLI framework
   - Notes: Use `[project.scripts]` in pyproject.toml
 
-## Configuration Management {Priority: High}
+## Configuration Management {Priority: High} [1/6 complete]
 
-- [ ] Implement YAML configuration loader with environment variable substitution
+- [x] Implement YAML configuration loader with environment variable substitution {Priority: High}
+  - Implemented: Added recursive loader in `core/config.py` that reads `config.yaml`, enforces location under `LOGFORGE_HOME`, substitutes `${LOGFORGE_HOME}` and other `${VAR}` tokens, expands `~`, and returns a processed dictionary for later Pydantic validation.
+  - Tested: Created `tests/unit/test_config_loader.py` covering env substitution, user path expansion, path safety, and missing-variable errors; ran `ruff`, `black --check`, `pytest`, and `mypy`.
+  - Files: `src/logforge/core/config.py`, `tests/unit/test_config_loader.py`, `pyproject.toml`
+  - Notes: Added `types-PyYAML` dev dependency for typing support; loader currently uses simple home resolution pending dedicated task.
+  - Date: 2025-11-23
   - Acceptance: Loads config.yaml, resolves `${LOGFORGE_HOME}`, validates schema
   - Dependencies: Project structure
   - Notes: Support `${VAR}` and `~/.logforge` expansion
@@ -1387,4 +1392,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Added Makefile + lint/typecheck configs, installed dev dependencies, and validated `ruff`, `black`, `pytest`, `mypy` runs for baseline CI readiness.
 - ✅ Completed: CLI entry & version command (Project Structure & Packaging)
   - Delivered Typer CLI scaffold (`logforge --help/--version`), subcommand grouping, helper messaging, unit tests, and metadata-driven `__version__` propagation.
+- ✅ Completed: Config loader w/ env substitution (Configuration Management)
+  - Implemented YAML loader with `${VAR}` expansion + safety checks, plus unit tests for env substitution, path enforcement, and `~` expansion.
 
