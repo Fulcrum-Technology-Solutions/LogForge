@@ -14,6 +14,7 @@ from prometheus_client import Counter, Gauge, generate_latest
 
 from logforge.api.auth import build_auth_dependency
 from logforge.api.endpoints.entities import create_entities_router
+from logforge.api.endpoints.generators import create_generators_router
 from logforge.api.endpoints.health import create_health_router
 from logforge.api.endpoints.metrics import create_metrics_router
 from logforge.api.endpoints.templates import create_templates_router
@@ -42,6 +43,11 @@ class APIDependencies:
     create_entity: Callable[[str, dict[str, Any]], dict[str, Any]] = lambda _t, data: data
     list_templates: Callable[[], list[dict[str, Any]]] = lambda: []
     get_template: Callable[[str], Optional[dict[str, Any]]] = lambda _t: None
+    list_generators: Callable[[], list[dict[str, Any]]] = lambda: []
+    get_generator: Callable[[str], Optional[dict[str, Any]]] = lambda _t: None
+    start_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
+    stop_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
+    restart_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
 
 
 def default_dependencies() -> APIDependencies:
@@ -59,6 +65,7 @@ def default_dependencies() -> APIDependencies:
             statistics=GeneratorStatistics(events_generated=0, errors=0, uptime=0),
         )
     ]
+    generator_snapshots = [status.model_dump() for status in generators]
 
     def health() -> HealthResponse:
         return HealthResponse(
@@ -115,6 +122,33 @@ def default_dependencies() -> APIDependencies:
             return None
         return template_detail(record)
 
+    def list_generators() -> list[dict[str, Any]]:
+        return generator_snapshots
+
+    def get_generator(name: str) -> Optional[dict[str, Any]]:
+        for snapshot in generator_snapshots:
+            if snapshot["name"] == name:
+                return snapshot
+        return None
+
+    def start_generator(name: str) -> dict[str, Any]:
+        snapshot = get_generator(name)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Generator not found")
+        return snapshot
+
+    def stop_generator(name: str) -> dict[str, Any]:
+        snapshot = get_generator(name)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Generator not found")
+        return snapshot
+
+    def restart_generator(name: str) -> dict[str, Any]:
+        snapshot = get_generator(name)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="Generator not found")
+        return snapshot
+
     return APIDependencies(
         get_health=health,
         get_status=status,
@@ -124,6 +158,11 @@ def default_dependencies() -> APIDependencies:
         create_entity=lambda entity_type, payload: registry.add_entity(entity_type, payload),
         list_templates=list_templates,
         get_template=get_template,
+        list_generators=list_generators,
+        get_generator=get_generator,
+        start_generator=start_generator,
+        stop_generator=stop_generator,
+        restart_generator=restart_generator,
     )
 
 
@@ -159,11 +198,13 @@ def create_app(
     metrics_router = create_metrics_router(deps, auth_dependency)
     entities_router = create_entities_router(deps, auth_dependency)
     templates_router = create_templates_router(deps, auth_dependency)
+    generators_router = create_generators_router(deps, auth_dependency)
 
     app.include_router(health_router, prefix="/api")
     app.include_router(metrics_router, prefix="/api")
     app.include_router(entities_router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
+    app.include_router(generators_router, prefix="/api")
 
     @app.get("/api/healthz", include_in_schema=False)
     async def healthz() -> dict[str, str]:

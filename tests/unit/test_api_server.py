@@ -51,7 +51,22 @@ def make_dependencies() -> APIDependencies:
     def metrics() -> bytes:
         return b"test_metric 1\n"
 
-    return APIDependencies(get_health=health, get_status=status, get_metrics=metrics)
+    deps = APIDependencies(get_health=health, get_status=status, get_metrics=metrics)
+    generator_data = {
+        "name": "windows_security",
+        "state": "RUNNING",
+        "template": "vendor/product",
+        "enabled": True,
+        "outputs": ["default"],
+        "frequency": {"base_rate": 10, "current_rate": 10},
+        "statistics": {"events_generated": 1, "errors": 0, "uptime": 0, "last_event": None},
+    }
+    deps.list_generators = lambda: [generator_data]
+    deps.get_generator = lambda name: generator_data if name == "windows_security" else None
+    deps.start_generator = lambda name: generator_data
+    deps.stop_generator = lambda name: generator_data
+    deps.restart_generator = lambda name: generator_data
+    return deps
 
 
 def test_health_endpoint_returns_data() -> None:
@@ -128,6 +143,20 @@ def test_templates_endpoints() -> None:
     detail_resp = client.get(f"/api/templates/{summary['id']}")
     assert detail_resp.status_code == 200
     assert detail_resp.json()["summary"]["name"] == "Example"
+
+
+def test_generators_endpoints() -> None:
+    deps = make_dependencies()
+    app = create_app(dependencies=deps)
+    client = TestClient(app)
+    resp = client.get("/api/generators")
+    assert resp.status_code == 200
+    listing = resp.json()
+    assert listing[0]["name"] == "windows_security"
+    status_resp = client.get("/api/generators/windows_security")
+    assert status_resp.status_code == 200
+    start_resp = client.post("/api/generators/windows_security/start")
+    assert start_resp.status_code == 200
 
 
 def test_http_exception_handler_returns_error_payload() -> None:
