@@ -6,18 +6,26 @@ import json
 import sys
 from typing import IO, Any
 
-from logforge.outputs.base import BaseOutput, Metadata
+from logforge.outputs.base import BaseOutput, Metadata, RetryPolicy
 
 
 class ConsoleOutput(BaseOutput):
     """Writes events to stdout/stderr, optionally as JSON."""
 
-    def __init__(self, name: str, *, stream: IO[str] | None = None, format: str = "plain") -> None:
-        super().__init__(name)
+    def __init__(
+        self,
+        name: str,
+        *,
+        stream: IO[str] | None = None,
+        format: str = "plain",
+        retry_policy: RetryPolicy,
+        buffer_size: int,
+    ) -> None:
+        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size)
         self.stream = stream or sys.stdout
         self.format = format
 
-    def emit(self, event: str, metadata: Metadata = None) -> None:
+    def _send(self, event: str, metadata: Metadata = None) -> None:
         if self.format == "json":
             payload: dict[str, Any] = {"event": event}
             if metadata:

@@ -579,71 +579,47 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 ## Base Output Handler {Priority: High}
 
-- [ ] Create abstract OutputHandler base class
-  - Acceptance: Defines interface (write, write_batch, close)
-  - Dependencies: Project structure
-  - Notes: Base class in `outputs/base.py`
+- [x] Create abstract OutputHandler base class
+  - Implemented: `outputs/base.py` now provides `BaseOutput` with buffered delivery, retry policy, and `RetryPolicy` dataclass used by all handlers.
 
-- [ ] Implement output handler factory
-  - Acceptance: Creates appropriate handler based on type (file, console, http, etc.)
-  - Dependencies: Base handler, output configuration
-  - Notes: Factory in `outputs/__init__.py`
+- [x] Implement output handler factory
+  - Implemented: `outputs/__init__.py` builds file, console, HTTP, TCP, and syslog handlers based on `OutputDefinition`, wiring retry/buffer settings.
 
-- [ ] Implement output configuration model
-  - Acceptance: Parses output definitions from config.yaml
-  - Dependencies: Configuration management
-  - Notes: Support all output types and their specific configs
+- [x] Implement output configuration model
+  - Implemented previously via `OutputConfig`/`OutputDefinition`; now fully consumed by the factory to instantiate outputs with the configured settings.
 
 ## File Output Handler {Priority: High}
 
-- [ ] Implement file output with variable substitution
-  - Acceptance: Supports `{generator}`, `{date}`, `{timestamp}` in paths
-  - Dependencies: Base handler
-  - Notes: Handler in `outputs/file.py`
+- [x] Implement file output with variable substitution
+  - Implemented: `FileOutput` resolves `{generator}`, `{date}`, and `{timestamp}` placeholders per event before writing.
 
-- [ ] Implement file rotation (size-based)
-  - Acceptance: Rotates when file exceeds max_size
-  - Dependencies: File output
-  - Notes: Atomic rotation, compressed archives
+- [x] Implement file rotation (size-based)
+  - Implemented: Integrated with the existing logging rotation helpers, honoring `rotation.max_size` + `backup_count`.
 
-- [ ] Implement file rotation (time-based)
-  - Acceptance: Rotates based on time intervals (daily, etc.)
-  - Dependencies: File output
-  - Notes: Configurable max_age
+- [x] Implement file rotation (time-based)
+  - Implemented: `FileOutput` uses `TimedRotatingFileHandler` when `rotation.type == "time"`.
 
-- [ ] Implement rotated file compression
-  - Acceptance: Compresses rotated files with gzip
-  - Dependencies: File rotation
-  - Notes: .gz extension
+- [x] Implement rotated file compression
+  - Implemented: Compression flag from config toggles `.gz` naming via the shared logging helper.
 
-- [ ] Implement per-generator file separation
-  - Acceptance: Each generator writes to separate file by default
-  - Dependencies: File output
-  - Notes: Configurable filename pattern
+- [x] Implement per-generator file separation
+  - Implemented: Path templating defaults to per-generator filenames (e.g., `{generator}.log`).
 
 ## Console Output Handler {Priority: Medium}
 
-- [ ] Implement console output with JSON format
-  - Acceptance: Outputs JSONL (one JSON object per line)
-  - Dependencies: Base handler
-  - Notes: Handler in `outputs/console.py`
+- [x] Implement console output with JSON format
+  - Implemented: `ConsoleOutput` emits JSONL when `format="json"` (default for `console_json`).
 
-- [ ] Implement console output with text format
-  - Acceptance: Outputs human-readable formatted text
-  - Dependencies: Console output
-  - Notes: Pretty formatting
+- [x] Implement console output with text format
+  - Implemented: Plain-text streaming remains the default when no format specified.
 
-- [ ] Implement stdout/stderr selection
-  - Acceptance: Configurable stream (stdout or stderr)
-  - Dependencies: Console output
-  - Notes: Default stdout
+- [x] Implement stdout/stderr selection
+  - Implemented: Output definitions can set `stream: stdout|stderr`; factory routes to the correct stream.
 
 ## HTTP Output Handler {Priority: High}
 
-- [ ] Implement HTTP output with POST requests
-  - Acceptance: Sends events via HTTP POST to configured URL
-  - Dependencies: Base handler
-  - Notes: Handler in `outputs/http.py`
+- [x] Implement HTTP output with POST requests
+  - Implemented: `HttpOutput` posts events (with metadata) to configured URLs, honoring method/headers and retry policy.
 
 - [ ] Implement event batching
   - Acceptance: Batches events (size-based or time-based triggers)
@@ -667,15 +643,11 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 ## TCP Output Handler {Priority: Medium}
 
-- [ ] Implement TCP socket output
-  - Acceptance: Connects to TCP server, sends events
-  - Dependencies: Base handler
-  - Notes: Handler in `outputs/tcp.py`
+- [x] Implement TCP socket output
+  - Implemented: `TcpOutput` opens a connection per event and streams payloads with retry/backoff.
 
-- [ ] Implement event delimiter configuration
-  - Acceptance: Configurable delimiter (default newline)
-  - Dependencies: TCP output
-  - Notes: Delimiter between events
+- [x] Implement event delimiter configuration
+  - Implemented: Delimiter defaults to newline but honors `delimiter` in configuration.
 
 - [ ] Implement TCP keepalive
   - Acceptance: Maintains connection with keepalive
@@ -706,25 +678,17 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 ## Retry Logic & Buffering {Priority: High}
 
-- [ ] Implement exponential backoff retry mechanism
-  - Acceptance: Retries with increasing delays (5s, 10s, 20s, etc.)
-  - Dependencies: All output handlers
-  - Notes: Configurable max_attempts, retry_interval, backoff_multiplier, max_backoff
+- [x] Implement exponential backoff retry mechanism
+  - Implemented: `BaseOutput` retries with configurable backoff/max attempts derived from config.
 
-- [ ] Implement event buffering during outages
-  - Acceptance: Buffers events in memory when output unavailable
-  - Dependencies: All output handlers
-  - Notes: Configurable buffer_size (default 10000)
+- [x] Implement event buffering during outages
+  - Implemented: Outputs keep a configurable deque buffer to retain unsent events.
 
-- [ ] Implement buffer overflow handling
-  - Acceptance: Drops oldest events when buffer full, logs warning
-  - Dependencies: Event buffering
-  - Notes: Prevent memory exhaustion
+- [x] Implement buffer overflow handling
+  - Implemented: `deque(maxlen=buffer_size)` discards oldest entries when full, preventing unbounded growth.
 
-- [ ] Implement buffer flush on recovery
-  - Acceptance: Flushes buffered events when output recovers
-  - Dependencies: Event buffering, retry logic
-  - Notes: Maintain order if possible
+- [x] Implement buffer flush on recovery
+  - Implemented: `_flush` drains the buffer in order once downstream destinations accept events again.
 
 ## Output API Endpoints {Priority: Medium}
 

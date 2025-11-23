@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, Iterable, List, Optional
 
-from logforge.core.config_schema import ConfigModel, GeneratorConfig, OutputDefinition
+from logforge.core.config_schema import ConfigModel, GeneratorConfig, OutputConfig
 from logforge.core.frequency import FrequencyController
 from logforge.core.generator import Generator, GeneratorSnapshot
 from logforge.outputs import build_output
@@ -16,8 +16,16 @@ from logforge.templates.renderer import TemplateRenderer
 class OutputFactory:
     """Builds output instances for a specific generator."""
 
-    def __init__(self, definitions: Iterable[OutputDefinition]) -> None:
-        self._definitions = {definition.name: definition for definition in definitions}
+    def __init__(self, config: OutputConfig) -> None:
+        self._definitions = {definition.name: definition for definition in config.definitions}
+        self._buffer_size = config.buffer_size
+        retry_config = config.retry
+        self._retry_policy = {
+            "max_attempts": retry_config.max_attempts,
+            "retry_interval": retry_config.retry_interval,
+            "backoff_multiplier": retry_config.backoff_multiplier,
+            "max_backoff": retry_config.max_backoff,
+        }
 
     def create(self, names: Iterable[str], generator_name: str) -> List[BaseOutput]:
         outputs: List[BaseOutput] = []
@@ -27,7 +35,14 @@ class OutputFactory:
                 raise KeyError(
                     f"Unknown output '{name}' requested by generator '{generator_name}'."
                 )
-            outputs.append(build_output(definition, generator_name=generator_name))
+            outputs.append(
+                build_output(
+                    definition,
+                    generator_name=generator_name,
+                    retry_policy=self._retry_policy,
+                    buffer_size=self._buffer_size,
+                )
+            )
         return outputs
 
 
@@ -58,7 +73,7 @@ class GeneratorEngine:
 
     @classmethod
     def from_config(cls, config: ConfigModel, renderer: TemplateRenderer) -> GeneratorEngine:
-        factory = OutputFactory(config.outputs.definitions)
+        factory = OutputFactory(config.outputs)
         return cls(config.generators, renderer, factory)
 
     def start(self, name: str) -> GeneratorSnapshot:
