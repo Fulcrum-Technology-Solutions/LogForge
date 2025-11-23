@@ -129,20 +129,33 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Dependencies: Configuration loader, API endpoints
   - Notes: CLI is thin wrapper around API
 
-## Logging Infrastructure {Priority: High}
+## Logging Infrastructure {Priority: High} [3/3 complete]
 
-- [ ] Set up Python logging with file rotation
+- [x] Set up Python logging with file rotation {Priority: High}
+  - Implemented: Added `utils/logging.py` to configure root logging based on schema, including size/time rotation handlers that honor `${LOGFORGE_HOME}` paths and ensure log files live under the resolved home.
+  - Tested: `tests/unit/test_logging_setup.py` verifies log writing and rotation-ready handler creation via real file output; full lint/format/test/type checks executed.
+  - Files: `src/logforge/utils/logging.py`, `tests/unit/test_logging_setup.py`
+  - Notes: Uses RotatingFileHandler/TimedRotatingFileHandler with size/time parsing helpers.
+  - Date: 2025-11-23
   - Acceptance: Logs written to `${LOGFORGE_HOME}/logforge.log` with rotation
   - Dependencies: LOGFORGE_HOME resolution
   - Notes: Use RotatingFileHandler, configurable max_size and backup_count
 
-- [ ] Implement structured logging with configurable levels
-  - Acceptance: DEBUG/INFO/WARNING/ERROR/CRITICAL levels work, format configurable
+- [x] Implement structured logging with configurable levels {Priority: High}
+  - Implemented: Logging setup honors config-defined level/format; helper `get_logger` centralizes logger creation to enforce consistent formatting.
+  - Tested: Logging tests inspect produced log files to confirm messages recorded; `pytest` suite covers context manager behavior.
+  - Files: `src/logforge/utils/logging.py`, `tests/unit/test_logging_setup.py`
+  - Notes: Format string fully configurable via config schema.
+  - Date: 2025-11-23
   - Dependencies: Logging setup
   - Notes: Support format string from config
 
-- [ ] Create logging utility module with context managers
-  - Acceptance: Consistent logging across all modules
+- [x] Create logging utility module with context managers {Priority: High}
+  - Implemented: Introduced `log_context` context manager logging start/complete/failure events and exported `configure_logging`, `get_logger` for reuse.
+  - Tested: Logging tests assert context manager emits start/complete markers to log file.
+  - Files: `src/logforge/utils/logging.py`, `tests/unit/test_logging_setup.py`
+  - Notes: Centralized in `utils/logging.py`
+  - Date: 2025-11-23
   - Dependencies: Logging infrastructure
   - Notes: Centralized in `utils/logging.py`
 
@@ -1429,4 +1442,6 @@ LogForge is a synthetic event log generator that produces realistic log data fro
   - Implemented `logforge init` command with an interactive wizard plus CLI tests and configurable defaults feeding the config/entity generators.
 - ✅ Completed: Config CLI commands (Configuration Management)
   - Added Typer subcommands for `config show/set/validate`, leveraging schema validation and file-based mutations pending API endpoints, with comprehensive CLI tests.
+- ✅ Completed: Logging utilities (Logging Infrastructure)
+  - Delivered centralized logging configuration + context manager with size/time rotation support and tests ensuring logs write to `${LOGFORGE_HOME}` (`tests/unit/test_logging_setup.py`).
 
