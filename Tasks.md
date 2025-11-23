@@ -1073,49 +1073,49 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 ## Metrics Collection {Priority: High} [5/5 complete]
 
 - [x] Implement Prometheus metrics collection
-  - Implemented: Prometheus metrics defined in `utils/metrics.py` using `prometheus_client`.
-  - Tested: Metrics collection verified in tests.
-  - Files: `src/logforge/utils/metrics.py`
+  - Implemented: Prometheus metrics defined in `utils/metrics.py` using `prometheus_client`. All metrics (counters, gauges, histograms) are properly registered and accessible via `/api/metrics` endpoint.
+  - Tested: Comprehensive unit tests in `tests/unit/test_metrics.py` verify all metric types work correctly.
+  - Files: `src/logforge/utils/metrics.py`, `tests/unit/test_metrics.py`
   - Date: 2025-01-15
   - Acceptance: Collects counters, gauges, histograms
   - Dependencies: prometheus-client library
-  - Notes: Metrics in `utils/metrics.py`
+  - Notes: Metrics in `utils/metrics.py`, integrated throughout codebase
 
 - [x] Implement event generation metrics
-  - Implemented: `events_generated_total` and `generator_errors_total` counters track per-generator metrics.
-  - Tested: Metrics verified in tests.
-  - Files: `src/logforge/utils/metrics.py`
+  - Implemented: `events_generated_total` and `generator_errors_total` counters track per-generator metrics. Integrated into `Generator.generate_once()` and error handling paths. `template_render_seconds` histogram tracks template rendering performance.
+  - Tested: Unit tests verify metrics increment correctly and template render time is recorded.
+  - Files: `src/logforge/core/generator.py`, `src/logforge/utils/metrics.py`, `tests/unit/test_metrics.py`
   - Date: 2025-01-15
-  - Acceptance: Tracks events_generated_total, errors_total per generator
+  - Acceptance: Tracks events_generated_total, errors_total per generator, template_render_seconds
   - Dependencies: Metrics collection
-  - Notes: Counter metrics
+  - Notes: Counter and histogram metrics, integrated in generator lifecycle
 
 - [x] Implement system metrics
-  - Implemented: `generators_running`, `memory_usage_bytes`, and `cpu_percent` gauges track system state.
-  - Tested: Metrics verified in tests.
-  - Files: `src/logforge/utils/metrics.py`
+  - Implemented: `generators_running` gauge tracks generator states (updated by `GeneratorEngine._update_generator_metrics()`). `memory_usage_bytes` and `cpu_percent` gauges updated every 5 seconds by background thread in `LogForgeService._update_system_metrics_loop()`.
+  - Tested: Unit tests verify gauge updates work correctly.
+  - Files: `src/logforge/core/engine.py`, `src/logforge/core/service.py`, `src/logforge/utils/metrics.py`, `tests/unit/test_metrics.py`
   - Date: 2025-01-15
   - Acceptance: Tracks generators_running, memory_usage_bytes, CPU percent
   - Dependencies: Metrics collection
-  - Notes: Gauge metrics, update periodically
+  - Notes: Gauge metrics, updated periodically via background thread
 
 - [x] Implement performance metrics
-  - Implemented: `template_render_seconds` and `output_latency_seconds` histograms track performance.
-  - Tested: Metrics verified in tests.
-  - Files: `src/logforge/utils/metrics.py`
+  - Implemented: `template_render_seconds` histogram tracks template rendering time (integrated in `Generator.generate_once()`). `output_latency_seconds` histogram tracks output delivery time (integrated in `BaseOutput._deliver_with_retry()`). Additional output metrics: `output_events_sent_total`, `output_errors_total`, `output_buffered_events`.
+  - Tested: Unit tests verify histogram recording and output metrics tracking.
+  - Files: `src/logforge/core/generator.py`, `src/logforge/outputs/base.py`, `src/logforge/utils/metrics.py`, `tests/unit/test_metrics.py`
   - Date: 2025-01-15
-  - Acceptance: Tracks template_render_seconds, output_latency_seconds
+  - Acceptance: Tracks template_render_seconds, output_latency_seconds, output events/errors/buffered
   - Dependencies: Metrics collection
-  - Notes: Histogram metrics
+  - Notes: Histogram and counter metrics, integrated in generator and output handlers
 
 - [x] Expose metrics via `/api/metrics` endpoint
-  - Implemented: `/api/metrics` endpoint returns Prometheus-compatible format.
-  - Tested: API tests verify metrics endpoint.
-  - Files: `src/logforge/api/endpoints/metrics.py`
+  - Implemented: `/api/metrics` endpoint uses `generate_latest()` from `prometheus_client` to return all registered metrics in Prometheus-compatible format. Metrics endpoint updates generator state metrics before generating output. All centralized metrics from `utils/metrics.py` are automatically included.
+  - Tested: API tests verify metrics endpoint returns Prometheus format. Unit tests verify metrics are properly collected.
+  - Files: `src/logforge/api/endpoints/metrics.py`, `src/logforge/api/server.py`, `tests/unit/test_api_server.py`, `tests/unit/test_metrics.py`
   - Date: 2025-01-15
-  - Acceptance: Returns Prometheus-compatible format
+  - Acceptance: Returns Prometheus-compatible format with all metrics
   - Dependencies: Metrics collection, API server
-  - Notes: Text format, Prometheus can scrape
+  - Notes: Text format, Prometheus can scrape, uses centralized metrics
 
 ---
 

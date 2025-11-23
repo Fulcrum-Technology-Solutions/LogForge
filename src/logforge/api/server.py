@@ -13,7 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from prometheus_client import Counter, Gauge, generate_latest
+from prometheus_client import generate_latest
 
 from logforge.api.auth import build_auth_dependency
 from logforge.api.endpoints.community import create_community_router
@@ -133,15 +133,11 @@ def build_dependencies_from_service(service: "LogForgeService") -> APIDependenci
             ),
         )
 
-    request_counter = Counter("api_requests_total", "Total API requests")
-    health_gauge = Gauge("generator_count", "Total generators", ["state"])
-
     def metrics() -> bytes:
-        request_counter.inc()
-        health_summary = health()
-        health_gauge.labels("running").set(health_summary.generators.running)
-        health_gauge.labels("degraded").set(health_summary.generators.degraded)
-        health_gauge.labels("error").set(health_summary.generators.error)
+        # Update generator state metrics from current service state
+        if hasattr(service, "engine"):
+            service.engine._update_generator_metrics()
+        # Generate Prometheus metrics from all registered collectors
         return generate_latest()
 
     def template_summary(record: TemplateRecord) -> dict[str, Any]:
@@ -370,15 +366,8 @@ def default_dependencies() -> APIDependencies:
             system=SystemMetrics(cpu_percent=0.0, memory_mb=0.0, threads=1),
         )
 
-    request_counter = Counter("api_requests_total", "Total API requests")
-    health_gauge = Gauge("generator_count", "Total generators", ["state"])
-
     def metrics() -> bytes:
-        request_counter.inc()
-        health_summary = health()
-        health_gauge.labels("running").set(health_summary.generators.running)
-        health_gauge.labels("degraded").set(health_summary.generators.degraded)
-        health_gauge.labels("error").set(health_summary.generators.error)
+        # Generate Prometheus metrics from all registered collectors
         return generate_latest()
 
     def template_summary(record: TemplateRecord) -> dict[str, Any]:

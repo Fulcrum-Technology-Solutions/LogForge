@@ -21,7 +21,7 @@ class ConsoleOutput(BaseOutput):
         retry_policy: RetryPolicy,
         buffer_size: int,
     ) -> None:
-        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size)
+        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size, output_type="console")
         self.stream = stream or sys.stdout
         self.format = format
 

@@ -25,7 +25,7 @@ class FileOutput(BaseOutput):
         retry_policy: RetryPolicy,
         buffer_size: int,
     ) -> None:
-        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size)
+        super().__init__(name, retry_policy=retry_policy, buffer_size=buffer_size, output_type="file")
         self.path_template = path_template
         self.generator_name = generator_name
         self.rotation = rotation

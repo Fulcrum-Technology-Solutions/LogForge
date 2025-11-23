@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import logging
 import multiprocessing
+import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
+
+import psutil
 
 from logforge.core.config import load_validated_config
 from logforge.core.config_schema import ConfigModel
@@ -14,6 +18,7 @@ from logforge.core.engine import GeneratorEngine, OutputFactory
 from logforge.entities.registry import EntityRegistry
 from logforge.templates.loader import TemplateLoader
 from logforge.templates.renderer import TemplateRenderer
+from logforge.utils.metrics import cpu_percent, memory_usage_bytes
 
 
 class LogForgeService:
@@ -28,6 +33,9 @@ class LogForgeService:
         self.config = config
         self._logger = logger or logging.getLogger("logforge.service")
         self._thread_pool: Optional[ThreadPoolExecutor] = None
+        self._metrics_thread: Optional[threading.Thread] = None
+        self._metrics_stop_event = threading.Event()
+        self._process = psutil.Process(os.getpid())
 
         # Initialize components
         from logforge.entities.storage import EntityStorage
@@ -81,13 +89,39 @@ class LogForgeService:
         """Start the service and all enabled generators."""
         self._logger.info("Starting LogForge service")
         self.engine.start_all()
+        # Start metrics collection thread
+        self._metrics_stop_event.clear()
+        self._metrics_thread = threading.Thread(
+            target=self._update_system_metrics_loop,
+            name="logforge-metrics",
+            daemon=True,
+        )
+        self._metrics_thread.start()
 
     def stop(self, timeout: float = 10.0) -> None:
         """Stop the service and all generators."""
         self._logger.info("Stopping LogForge service")
+        # Stop metrics collection
+        self._metrics_stop_event.set()
+        if self._metrics_thread:
+            self._metrics_thread.join(timeout=2.0)
         self.engine.stop_all()
         if self._thread_pool:
             self._thread_pool.shutdown(wait=True, timeout=timeout)
+
+    def _update_system_metrics_loop(self) -> None:
+        """Background thread that periodically updates system metrics."""
+        while not self._metrics_stop_event.wait(5.0):  # Update every 5 seconds
+            try:
+                # Update memory usage
+                memory_info = self._process.memory_info()
+                memory_usage_bytes.set(memory_info.rss)
+
+                # Update CPU usage (non-blocking)
+                cpu_usage = self._process.cpu_percent(interval=None)
+                cpu_percent.set(cpu_usage)
+            except Exception as exc:
+                self._logger.warning("Failed to update system metrics: %s", exc)
 
     def __enter__(self) -> LogForgeService:
         """Context manager entry."""
