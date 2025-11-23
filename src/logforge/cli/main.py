@@ -9,10 +9,14 @@ from logforge import __version__
 from logforge.core import config as core_config
 from . import entities as entities_commands
 from . import generators as generators_commands
+from . import service as service_commands
+from . import start as start_commands
 from . import templates as templates_commands
 from .common import CLIConfig
 
 app = typer.Typer(help="LogForge synthetic event generator CLI.")
+app.add_typer(start_commands.app, name="start")
+app.add_typer(service_commands.app, name="service")
 app.add_typer(entities_commands.app, name="entities")
 app.add_typer(generators_commands.app, name="generators")
 app.add_typer(templates_commands.app, name="templates")

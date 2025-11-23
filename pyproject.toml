@@ -7,7 +7,7 @@ name = "logforge"
 version = "0.1.0"
 description = "Synthetic event log generator with API-first architecture and Typer CLI."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 requires-python = ">=3.9"
 authors = [{ name = "LogForge OSS Team" }]
 dependencies = [

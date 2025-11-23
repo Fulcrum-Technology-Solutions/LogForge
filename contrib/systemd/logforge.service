@@ -1,0 +1,24 @@
+[Unit]
+Description=LogForge Synthetic Event Generator
+After=network.target
+
+[Service]
+Type=simple
+User=logforge
+Group=logforge
+WorkingDirectory=/opt/logforge
+ExecStart=/usr/local/bin/logforge start --service
+Restart=on-failure
+RestartSec=10s
+
+# Environment
+Environment="LOGFORGE_HOME=/opt/logforge"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=logforge
+
+[Install]
+WantedBy=multi-user.target
+

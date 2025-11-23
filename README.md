@@ -26,6 +26,7 @@ git clone https://github.com/your-org/logforge.git
 cd logforge
 python -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip  # Required for PEP 660 support (pip 21.3+)
 pip install -e ".[dev]"
 ```
 
@@ -38,17 +39,40 @@ logforge init --force
 
 This creates the directory layout, default configuration, entity registry, and template scaffolding under `LOGFORGE_HOME`.
 
-### Run API server
+### Start the Service
 
+**Foreground mode (development/testing):**
 ```bash
-uvicorn logforge.api.server:create_app --factory --host 0.0.0.0 --port 8080
+logforge start
 ```
 
-The CLI health-checks the API before performing operations.
+**As a systemd service (production):**
+```bash
+# Install systemd service (creates user, directories, service file)
+sudo logforge service install
+
+# Start the service
+sudo systemctl start logforge
+# or use the wrapper:
+sudo logforge service start
+
+# Enable on boot
+sudo systemctl enable logforge
+```
+
+The service embeds the management API server and starts enabled generators automatically. The CLI health-checks the API before performing operations.
 
 ### CLI Examples
 
 ```bash
+# Service management
+logforge start                    # Start service (foreground)
+logforge service install          # Install systemd service (requires root)
+logforge service start            # Start systemd service
+logforge service stop             # Stop systemd service
+logforge service restart          # Restart systemd service
+logforge service status           # Show service status
+
 # Entity operations
 logforge entities list
 logforge entities show users alice
@@ -157,6 +181,27 @@ curl -X POST http://127.0.0.1:8080/api/generators/windows_security/stop
 
 # Entity summary
 curl http://127.0.0.1:8080/api/entities | jq
+```
+
+## Troubleshooting
+
+### Installation Issues
+
+**Error: `No module named pip` in venv**
+
+Upgrade pip in your virtual environment:
+
+```bash
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+**Error: Editable install fails with older pip**
+
+Upgrade pip to version 21.3+ (PEP 660 support required):
+
+```bash
+python -m pip install --upgrade pip
 ```
 
 ## License
