@@ -14,15 +14,17 @@ from logforge.api.auth import build_auth_dependency
 from logforge.api.endpoints.entities import create_entities_router
 from logforge.api.endpoints.health import create_health_router
 from logforge.api.endpoints.metrics import create_metrics_router
+from logforge.api.endpoints.templates import create_templates_router
 from logforge.api.models import (
+    FrequencyInfo,
     GeneratorStatistics,
     GeneratorStatus,
     GeneratorSummary,
     HealthResponse,
     StatusResponse,
     SystemMetrics,
-    FrequencyInfo,
 )
+from logforge.templates.loader import TemplateLoader, TemplateRecord
 
 
 @dataclass
@@ -35,12 +37,15 @@ class APIDependencies:
     entities_summary: Callable[[], dict[str, Any]] = lambda: {}
     list_entities: Callable[[str], list[dict[str, Any]]] = lambda _t: []
     create_entity: Callable[[str, dict[str, Any]], dict[str, Any]] = lambda _t, data: data
+    list_templates: Callable[[], list[dict[str, Any]]] = lambda: []
+    get_template: Callable[[str], Optional[dict[str, Any]]] = lambda _t: None
 
 
 def default_dependencies() -> APIDependencies:
     from logforge.entities.registry import EntityRegistry
 
     registry = EntityRegistry()
+    template_loader = TemplateLoader()
     generators = [
         GeneratorStatus(
             name="windows_security",
@@ -80,6 +85,33 @@ def default_dependencies() -> APIDependencies:
         health_gauge.labels("error").set(health_summary.generators.error)
         return generate_latest()
 
+    def template_summary(record: TemplateRecord) -> dict[str, Any]:
+        metadata = record.metadata
+        return {
+            "id": record.template_id,
+            "name": metadata.name,
+            "vendor": metadata.vendor,
+            "product": metadata.product,
+            "data_source": metadata.data_source,
+            "version": metadata.version,
+            "location": record.location,
+        }
+
+    def template_detail(record: TemplateRecord) -> dict[str, Any]:
+        return {
+            "summary": template_summary(record),
+            "metadata": record.metadata.model_dump(),
+        }
+
+    def list_templates() -> list[dict[str, Any]]:
+        return [template_summary(record) for record in template_loader.list_templates()]
+
+    def get_template(template_id: str) -> Optional[dict[str, Any]]:
+        record = template_loader.get_template(template_id)
+        if record is None:
+            return None
+        return template_detail(record)
+
     return APIDependencies(
         get_health=health,
         get_status=status,
@@ -87,6 +119,8 @@ def default_dependencies() -> APIDependencies:
         entities_summary=registry.summary,
         list_entities=lambda entity_type: registry.list_entities(entity_type),
         create_entity=lambda entity_type, payload: registry.add_entity(entity_type, payload),
+        list_templates=list_templates,
+        get_template=get_template,
     )
 
 
@@ -119,10 +153,12 @@ def create_app(
     health_router = create_health_router(deps, auth_dependency)
     metrics_router = create_metrics_router(deps, auth_dependency)
     entities_router = create_entities_router(deps, auth_dependency)
+    templates_router = create_templates_router(deps, auth_dependency)
 
     app.include_router(health_router, prefix="/api")
     app.include_router(metrics_router, prefix="/api")
     app.include_router(entities_router, prefix="/api")
+    app.include_router(templates_router, prefix="/api")
 
     @app.get("/api/healthz", include_in_schema=False)
     async def healthz() -> dict[str, str]:

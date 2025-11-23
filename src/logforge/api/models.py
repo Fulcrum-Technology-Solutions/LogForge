@@ -6,6 +6,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from logforge.templates.models import TemplateMetadata
+
 
 class GeneratorSummary(BaseModel):
     total: int = 0
@@ -57,10 +59,32 @@ class StatusResponse(BaseModel):
     system: SystemMetrics = Field(default_factory=SystemMetrics)
 
 
+class TemplateSummary(BaseModel):
+    id: str
+    name: str
+    vendor: str
+    product: str
+    data_source: str
+    version: Optional[str] = None
+    location: str
+
+
+class TemplateListResponse(BaseModel):
+    templates: list[TemplateSummary] = Field(default_factory=list)
+
+
+class TemplateDetailResponse(BaseModel):
+    summary: TemplateSummary
+    metadata: TemplateMetadata
+
+
 __all__ = [
     "HealthResponse",
     "StatusResponse",
     "GeneratorStatus",
     "GeneratorSummary",
     "SystemMetrics",
+    "TemplateSummary",
+    "TemplateListResponse",
+    "TemplateDetailResponse",
 ]

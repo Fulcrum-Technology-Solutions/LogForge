@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import typer
 import yaml
-
-from typing import cast
 
 from logforge.cli.api_client import APIClient
 from logforge.entities.storage import EntityStorage

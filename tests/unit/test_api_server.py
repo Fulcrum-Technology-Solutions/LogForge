@@ -95,6 +95,40 @@ def test_entities_endpoints() -> None:
     assert resp.json()["id"] == 1
 
 
+def test_templates_endpoints() -> None:
+    deps = make_dependencies()
+    summary = {
+        "id": "vendor/product/example",
+        "name": "Example",
+        "vendor": "vendor",
+        "product": "product",
+        "data_source": "system",
+        "version": "1.0.0",
+        "location": "default",
+    }
+    detail = {
+        "summary": summary,
+        "metadata": {
+            "id": "vendor/product/example",
+            "name": "Example",
+            "vendor": "vendor",
+            "product": "product",
+            "data_source": "system",
+            "format": "json",
+        },
+    }
+    deps.list_templates = lambda: [summary]
+    deps.get_template = lambda template_id: detail if template_id == summary["id"] else None
+    app = create_app(dependencies=deps)
+    client = TestClient(app)
+    resp = client.get("/api/templates")
+    assert resp.status_code == 200
+    assert resp.json()["templates"][0]["id"] == summary["id"]
+    detail_resp = client.get(f"/api/templates/{summary['id']}")
+    assert detail_resp.status_code == 200
+    assert detail_resp.json()["summary"]["name"] == "Example"
+
+
 def test_api_server_start_stop() -> None:
     app = create_app()
     with mock.patch("uvicorn.Server.run", return_value=None) as run_mock:

@@ -7,7 +7,13 @@ from typing import Any, List, Optional, Sequence, cast
 
 from pydantic import BaseModel
 
-from logforge.entities.models import DeviceEntity, EntityDocument, Organization, ServiceEntity, UserEntity
+from logforge.entities.models import (
+    DeviceEntity,
+    EntityDocument,
+    Organization,
+    ServiceEntity,
+    UserEntity,
+)
 from logforge.entities.storage import EntityStorage
 from logforge.entities.validator import EntityValidationError, validate_entities
 
