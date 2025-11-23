@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import difflib
+import io
 import json
+import os
 import shutil
+import tempfile
+import zipfile
 from pathlib import Path
 from typing import List, Optional, Sequence
 
 import typer
 
 from logforge.cli.api_client import APIClient
+from logforge.community.client import CommunityClient, CommunityClientConfig, CommunityClientError
+from logforge.core.home import resolve_logforge_home
 from logforge.templates.loader import TemplateLoader
 from logforge.templates.validator import TemplateValidationError, TemplateValidator
 
@@ -36,6 +42,16 @@ def _emit(ctx: typer.Context, data: dict) -> None:
                 typer.echo(f"{tpl['id']} [{tpl['location']}] - {tpl['name']}")
         else:
             typer.echo(json.dumps(data, indent=2))
+
+
+def _community_client(
+    base_url: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> CommunityClient:
+    url = base_url or os.getenv("LOGFORGE_COMMUNITY_URL", "https://api.logforge.io/v1")
+    key = api_key or os.getenv("LOGFORGE_COMMUNITY_API_KEY")
+    config = CommunityClientConfig(base_url=url, api_key=key)
+    return CommunityClient(config)
 
 
 def _normalize_diff_target(value: str) -> str:
@@ -265,3 +281,105 @@ def merge_template(
         )
     else:
         typer.secho("No changes applied during merge.", fg=typer.colors.YELLOW)
+
+
+@app.command("search")
+def search_templates_command(
+    ctx: typer.Context,
+    query: str = typer.Argument(..., help="Search query string"),
+    limit: int = typer.Option(20, "--limit", help="Maximum number of results to return."),
+    community_url: Optional[str] = typer.Option(
+        None,
+        "--community-url",
+        help="Override community API URL.",
+    ),
+    community_api_key: Optional[str] = typer.Option(
+        None,
+        "--community-api-key",
+        help="API key for community template catalog.",
+    ),
+) -> None:
+    """Search community templates."""
+
+    client = _community_client(community_url, community_api_key)
+    try:
+        results = client.search_templates(query, limit=limit)
+    except CommunityClientError as exc:
+        typer.secho(f"Community search failed: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    if _output_json(ctx):
+        typer.echo(json.dumps(results, indent=2))
+        return
+    if not results:
+        typer.secho("No templates found.", fg=typer.colors.YELLOW)
+        return
+    for template in results:
+        typer.echo(f"{template.get('id', 'unknown'):40} {template.get('name', '')}")
+
+
+def _install_archive(template_id: str, archive: bytes, target_dir: Path) -> Path:
+    buffer = io.BytesIO(archive)
+    if not zipfile.is_zipfile(buffer):
+        raise ValueError("Downloaded package is not a valid ZIP archive.")
+    buffer.seek(0)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "package.zip"
+        tmp_path.write_bytes(archive)
+        extracted_dir = Path(tmpdir) / "contents"
+        with zipfile.ZipFile(tmp_path) as zf:
+            zf.extractall(extracted_dir)
+        metadata_path = extracted_dir / "metadata.yaml"
+        template_path = extracted_dir / "template.j2"
+        if not metadata_path.exists() or not template_path.exists():
+            raise ValueError("Package missing metadata.yaml or template.j2.")
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        shutil.copytree(extracted_dir, target_dir)
+    return target_dir
+
+
+@app.command("install")
+def install_template_from_community(
+    ctx: typer.Context,
+    template_id: str = typer.Argument(..., help="Community template ID to install."),
+    community_url: Optional[str] = typer.Option(
+        None,
+        "--community-url",
+        help="Override community API URL.",
+    ),
+    community_api_key: Optional[str] = typer.Option(
+        None,
+        "--community-api-key",
+        help="API key for community template catalog.",
+    ),
+    destination: Optional[Path] = typer.Option(
+        None,
+        "--destination",
+        dir_okay=True,
+        file_okay=False,
+        help=(
+            "Directory to place template contents "
+            "(defaults to LOGFORGE_HOME/templates/custom/<id>)."
+        ),
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing template directory."),
+) -> None:
+    """Download and install a template from the community catalog."""
+
+    base_dir = destination or resolve_logforge_home() / "templates" / "custom"
+    target_dir = base_dir / template_id
+    if target_dir.exists() and not force:
+        typer.secho(
+            f"Template '{template_id}' already exists at {target_dir}. Use --force to overwrite.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    client = _community_client(community_url, community_api_key)
+    try:
+        archive_bytes = client.download_template(template_id)
+        installed_path = _install_archive(template_id, archive_bytes, target_dir)
+    except (CommunityClientError, ValueError) as exc:
+        typer.secho(f"Failed to install template: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    typer.secho(f"Installed template '{template_id}' to {installed_path}", fg=typer.colors.GREEN)
