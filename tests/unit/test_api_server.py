@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest import mock
 
 from fastapi import HTTPException
@@ -178,6 +179,57 @@ def test_outputs_endpoints() -> None:
     assert outputs[0]["name"] == "default_file"
     detail = client.get("/api/outputs/default_file")
     assert detail.status_code == 200
+
+
+def test_community_search_endpoint(monkeypatch):
+    class FakeCommunityClient:
+        def search_templates(self, query: str, limit: int = 20):
+            return [{"id": "vendor/product/example", "name": "Example"}]
+
+        def download_template(self, template_id: str) -> bytes:  # pragma: no cover - not used here
+            raise AssertionError("not expected")
+
+    monkeypatch.setattr(
+        "logforge.api.endpoints.community._community_client",
+        lambda: FakeCommunityClient(),
+    )
+    app = create_app(dependencies=make_dependencies())
+    client = TestClient(app)
+    resp = client.get("/api/community/templates/search", params={"query": "windows"})
+    assert resp.status_code == 200
+    assert resp.json()["results"][0]["id"] == "vendor/product/example"
+
+
+def test_community_install_endpoint(monkeypatch, tmp_path):
+    class FakeCommunityClient:
+        def search_templates(self, query: str, limit: int = 20):  # pragma: no cover - not used
+            return []
+
+        def download_template(self, template_id: str) -> bytes:
+            return b"zipbytes"
+
+    monkeypatch.setattr(
+        "logforge.api.endpoints.community._community_client",
+        lambda: FakeCommunityClient(),
+    )
+
+    def fake_install(template_id: str, archive: bytes, *, destination=None, force=False) -> Path:
+        assert template_id == "vendor/product/example"
+        return tmp_path / template_id
+
+    monkeypatch.setattr(
+        "logforge.api.endpoints.community.install_template_archive",
+        fake_install,
+    )
+
+    app = create_app(dependencies=make_dependencies())
+    client = TestClient(app)
+    resp = client.post(
+        "/api/community/templates/install",
+        json={"template_id": "vendor/product/example", "destination": str(tmp_path), "force": True},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["path"].endswith("vendor/product/example")
 
 
 def test_http_exception_handler_returns_error_payload() -> None:

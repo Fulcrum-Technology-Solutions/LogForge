@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Gauge, generate_latest
 
 from logforge.api.auth import build_auth_dependency
+from logforge.api.endpoints.community import create_community_router
 from logforge.api.endpoints.entities import create_entities_router
 from logforge.api.endpoints.generators import create_generators_router
 from logforge.api.endpoints.health import create_health_router
@@ -226,6 +227,7 @@ def create_app(
     metrics_router = create_metrics_router(deps, auth_dependency)
     entities_router = create_entities_router(deps, auth_dependency)
     templates_router = create_templates_router(deps, auth_dependency)
+    community_router = create_community_router(auth_dependency)
     outputs_router = create_outputs_router(deps, auth_dependency)
     generators_router = create_generators_router(deps, auth_dependency)
 
@@ -233,6 +235,7 @@ def create_app(
     app.include_router(metrics_router, prefix="/api")
     app.include_router(entities_router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
+    app.include_router(community_router, prefix="/api")
     app.include_router(outputs_router, prefix="/api")
     app.include_router(generators_router, prefix="/api")
 

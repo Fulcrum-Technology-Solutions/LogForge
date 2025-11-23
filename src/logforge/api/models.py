@@ -78,6 +78,29 @@ class TemplateDetailResponse(BaseModel):
     metadata: TemplateMetadata
 
 
+class CommunityTemplateSummary(BaseModel):
+    id: str
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    product: Optional[str] = None
+    description: Optional[str] = None
+
+
+class CommunityTemplateSearchResponse(BaseModel):
+    results: list[CommunityTemplateSummary] = Field(default_factory=list)
+
+
+class CommunityTemplateInstallRequest(BaseModel):
+    template_id: str
+    destination: Optional[str] = None
+    force: bool = False
+
+
+class CommunityTemplateInstallResponse(BaseModel):
+    template_id: str
+    path: str
+
+
 class OutputStatistics(BaseModel):
     events_sent: int = 0
     errors: int = 0
@@ -112,6 +135,10 @@ __all__ = [
     "TemplateSummary",
     "TemplateListResponse",
     "TemplateDetailResponse",
+    "CommunityTemplateSummary",
+    "CommunityTemplateSearchResponse",
+    "CommunityTemplateInstallRequest",
+    "CommunityTemplateInstallResponse",
     "OutputSummary",
     "OutputListResponse",
     "ErrorResponse",

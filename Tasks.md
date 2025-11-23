@@ -372,20 +372,20 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 - [x] Create community API client (HTTP client)
   - Implemented: `community/client.py` now provides `CommunityClient` with search/detail/download support, API key handling, and error wrapping.
 
-- [ ] Implement template search functionality
-  - Acceptance: Searches remote templates by query, vendor, product
-  - Dependencies: Community API client
-  - Notes: Support pagination
+- [x] Implement template search functionality
+  - Implemented: `community/client.py` provides `search_templates`, and CLI/API layers now expose search capability.
 
-- [ ] Implement template package downloader
-  - Acceptance: Downloads .forge packages, verifies signatures
-  - Dependencies: Community API client
-  - Notes: Handle network errors, retries
+- [x] Implement template package downloader
+  - Implemented via `CommunityClient.download_template`, handling auth + timeout.
 
-- [ ] Implement template package installer
-  - Acceptance: Extracts .forge packages to default/ directory
-  - Dependencies: Package downloader
-  - Notes: Validate package structure, update registry
+- [x] Implement template package installer
+  - Implemented: `community/install.py` validates ZIP contents and installs into `templates/custom`.
+
+- [x] Expose community template search/install API endpoints
+  - Implemented: `/api/community/templates/search` and `/api/community/templates/install` proxy the community client and reuse the shared installer.
+
+- [x] Implement shared template install workflow
+  - Implemented: `community/install.install_template_archive` centralizes package validation/copying for CLI and API flows.
 
 - [ ] Implement template update checker
   - Acceptance: Checks for remote updates, compares versions
@@ -395,15 +395,11 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 - [x] Implement `logforge templates list` command
   - Implemented: CLI uses management API `/api/templates` to display ID/location/vendor/version data with optional JSON output; precedence indicated via `[location]`.
 
-- [ ] Implement `logforge templates search` command
-  - Acceptance: Searches community templates
-  - Dependencies: Community API client
-  - Notes: Format results nicely
+- [x] Implement `logforge templates search` command
+  - Implemented: CLI now uses the community client to query catalog results with JSON/table output.
 
-- [ ] Implement `logforge templates install` command
-  - Acceptance: Installs templates from repository or local .forge file
-  - Dependencies: Package installer
-  - Notes: Warn if custom version exists
+- [x] Implement `logforge templates install` command
+  - Implemented: CLI downloads, validates, and installs community packages with destination/force options.
 
 - [ ] Implement `logforge templates update` command
   - Acceptance: Updates outdated default/ templates

@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import difflib
-import io
 import json
 import os
 import shutil
-import tempfile
-import zipfile
 from pathlib import Path
 from typing import List, Optional, Sequence
 
@@ -16,6 +13,7 @@ import typer
 
 from logforge.cli.api_client import APIClient
 from logforge.community.client import CommunityClient, CommunityClientConfig, CommunityClientError
+from logforge.community.install import TemplateInstallError, install_template_archive
 from logforge.core.home import resolve_logforge_home
 from logforge.templates.loader import TemplateLoader
 from logforge.templates.validator import TemplateValidationError, TemplateValidator
@@ -317,27 +315,6 @@ def search_templates_command(
         typer.echo(f"{template.get('id', 'unknown'):40} {template.get('name', '')}")
 
 
-def _install_archive(template_id: str, archive: bytes, target_dir: Path) -> Path:
-    buffer = io.BytesIO(archive)
-    if not zipfile.is_zipfile(buffer):
-        raise ValueError("Downloaded package is not a valid ZIP archive.")
-    buffer.seek(0)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = Path(tmpdir) / "package.zip"
-        tmp_path.write_bytes(archive)
-        extracted_dir = Path(tmpdir) / "contents"
-        with zipfile.ZipFile(tmp_path) as zf:
-            zf.extractall(extracted_dir)
-        metadata_path = extracted_dir / "metadata.yaml"
-        template_path = extracted_dir / "template.j2"
-        if not metadata_path.exists() or not template_path.exists():
-            raise ValueError("Package missing metadata.yaml or template.j2.")
-        if target_dir.exists():
-            shutil.rmtree(target_dir)
-        shutil.copytree(extracted_dir, target_dir)
-    return target_dir
-
-
 @app.command("install")
 def install_template_from_community(
     ctx: typer.Context,
@@ -378,8 +355,13 @@ def install_template_from_community(
     client = _community_client(community_url, community_api_key)
     try:
         archive_bytes = client.download_template(template_id)
-        installed_path = _install_archive(template_id, archive_bytes, target_dir)
-    except (CommunityClientError, ValueError) as exc:
+        installed_path = install_template_archive(
+            template_id,
+            archive_bytes,
+            destination=base_dir,
+            force=force,
+        )
+    except (CommunityClientError, TemplateInstallError) as exc:
         typer.secho(f"Failed to install template: {exc}", fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
     typer.secho(f"Installed template '{template_id}' to {installed_path}", fg=typer.colors.GREEN)
