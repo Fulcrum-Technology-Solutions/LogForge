@@ -123,3 +123,41 @@ def test_templates_diff(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert "--- default/metadata.yaml" in result.stdout
     assert "+hello world" in result.stdout
+
+
+def test_templates_merge_default_strategy(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    default_dir = home / "templates" / "default" / "vendor" / "product" / "example"
+    custom_dir = home / "templates" / "custom" / "vendor" / "product" / "example"
+    default_dir.mkdir(parents=True)
+    custom_dir.mkdir(parents=True)
+    (default_dir / "metadata.yaml").write_text(METADATA_TEXT)
+    custom_metadata = METADATA_TEXT.replace("Example", "Custom Example", 1)
+    (custom_dir / "metadata.yaml").write_text(custom_metadata)
+    (default_dir / "template.j2").write_text("hello")
+    (custom_dir / "template.j2").write_text("goodbye")
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    result = runner.invoke(app, ["templates", "merge", "vendor/product/example"])
+    assert result.exit_code == 0
+    assert (custom_dir / "metadata.yaml").read_text() == METADATA_TEXT
+    assert (custom_dir / "template.j2").read_text() == "hello"
+    assert (custom_dir / "template.j2.bak").exists()
+
+
+def test_templates_merge_custom_strategy_keeps_changes(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    default_dir = home / "templates" / "default" / "vendor" / "product" / "example"
+    custom_dir = home / "templates" / "custom" / "vendor" / "product" / "example"
+    default_dir.mkdir(parents=True)
+    custom_dir.mkdir(parents=True)
+    (default_dir / "metadata.yaml").write_text(METADATA_TEXT)
+    custom_metadata = METADATA_TEXT.replace("Example", "Custom Example", 1)
+    (custom_dir / "metadata.yaml").write_text(custom_metadata)
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    result = runner.invoke(
+        app,
+        ["templates", "merge", "vendor/product/example", "--strategy", "custom"],
+    )
+    assert result.exit_code == 0
+    assert (custom_dir / "metadata.yaml").read_text() == custom_metadata
+    assert not (custom_dir / "metadata.yaml.bak").exists()

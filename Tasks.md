@@ -211,15 +211,12 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 
 ## API Error Handling {Priority: Medium}
 
-- [ ] Implement global exception handlers
-  - Acceptance: All API errors return consistent JSON format
-  - Dependencies: FastAPI app
-  - Notes: Standard error response structure
+- [x] Implement global exception handlers
+  - Implemented: Centralized FastAPI handlers now transform `HTTPException`, request validation errors, and unhandled exceptions into `{success: false, error, details}` payloads.
+  - Tested: `tests/unit/test_api_server.py` covers HTTP errors, validation failures, and unexpected exceptions.
 
-- [ ] Create API response models (Pydantic)
-  - Acceptance: All endpoints use typed request/response models
-  - Dependencies: FastAPI app
-  - Notes: Models in `api/models.py`
+- [x] Create API response models (Pydantic)
+  - Implemented: Added `ErrorResponse` model ensuring consistent error envelope and wiring handlers to emit it.
 
 ---
 
@@ -351,10 +348,8 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 - [x] Implement `logforge templates diff` command
   - Implemented: CLI generates unified diffs for metadata and template files using `difflib`, highlighting divergence between default/custom copies.
 
-- [ ] Implement `logforge templates merge` command
-  - Acceptance: Attempts to merge default changes into custom (interactive)
-  - Dependencies: Template diff
-  - Notes: Git-style merge with conflict resolution
+- [x] Implement `logforge templates merge` command
+  - Implemented: CLI command syncs default changes into custom templates with configurable strategies (`default` vs `custom`) and optional backups; covered by `tests/unit/test_cli_templates.py`.
 
 - [x] Implement `logforge templates revert` command
   - Implemented: CLI removes custom template directories and reports status; verified via CLI tests.

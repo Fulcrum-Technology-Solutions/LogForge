@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -78,6 +78,12 @@ class TemplateDetailResponse(BaseModel):
     metadata: TemplateMetadata
 
 
+class ErrorResponse(BaseModel):
+    success: Literal[False] = False
+    error: str
+    details: Optional[Any] = None
+
+
 __all__ = [
     "HealthResponse",
     "StatusResponse",
@@ -87,4 +93,5 @@ __all__ = [
     "TemplateSummary",
     "TemplateListResponse",
     "TemplateDetailResponse",
+    "ErrorResponse",
 ]

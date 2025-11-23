@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Gauge, generate_latest
 
 from logforge.api.auth import build_auth_dependency
@@ -16,6 +18,7 @@ from logforge.api.endpoints.health import create_health_router
 from logforge.api.endpoints.metrics import create_metrics_router
 from logforge.api.endpoints.templates import create_templates_router
 from logforge.api.models import (
+    ErrorResponse,
     FrequencyInfo,
     GeneratorStatistics,
     GeneratorStatus,
@@ -150,6 +153,8 @@ def create_app(
         openapi_url="/openapi.json",
     )
 
+    _register_exception_handlers(app)
+
     health_router = create_health_router(deps, auth_dependency)
     metrics_router = create_metrics_router(deps, auth_dependency)
     entities_router = create_entities_router(deps, auth_dependency)
@@ -173,6 +178,26 @@ def create_app(
         deps.on_shutdown()
 
     return app
+
+
+def _register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(HTTPException)
+    async def _handle_http_exception(request, exc: HTTPException) -> JSONResponse:
+        payload = ErrorResponse(error=str(exc.detail)).model_dump()
+        return JSONResponse(status_code=exc.status_code, content=payload)
+
+    @app.exception_handler(RequestValidationError)
+    async def _handle_request_validation(request, exc: RequestValidationError) -> JSONResponse:
+        payload = ErrorResponse(
+            error="Request validation failed.",
+            details=exc.errors(),
+        ).model_dump()
+        return JSONResponse(status_code=422, content=payload)
+
+    @app.exception_handler(Exception)
+    async def _handle_unexpected_exception(request, exc: Exception) -> JSONResponse:
+        payload = ErrorResponse(error="Internal server error.", details=str(exc)).model_dump()
+        return JSONResponse(status_code=500, content=payload)
 
 
 class APIServer:

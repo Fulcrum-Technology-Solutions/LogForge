@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittest import mock
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from logforge.api.models import (
@@ -127,6 +128,46 @@ def test_templates_endpoints() -> None:
     detail_resp = client.get(f"/api/templates/{summary['id']}")
     assert detail_resp.status_code == 200
     assert detail_resp.json()["summary"]["name"] == "Example"
+
+
+def test_http_exception_handler_returns_error_payload() -> None:
+    app = create_app(dependencies=make_dependencies())
+
+    @app.get("/api/fail")
+    def _fail():
+        raise HTTPException(status_code=418, detail="teapot")
+
+    client = TestClient(app)
+    resp = client.get("/api/fail")
+    assert resp.status_code == 418
+    assert resp.json() == {"success": False, "error": "teapot", "details": None}
+
+
+def test_request_validation_handler_formats_errors() -> None:
+    app = create_app(dependencies=make_dependencies())
+    client = TestClient(app)
+    # Missing body for POST should trigger validation error
+    resp = client.post("/api/entities/users")
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["success"] is False
+    assert body["error"] == "Request validation failed."
+    assert isinstance(body["details"], list)
+
+
+def test_unhandled_exception_handler_masks_errors() -> None:
+    app = create_app(dependencies=make_dependencies())
+
+    @app.get("/api/crash")
+    def _crash():
+        raise RuntimeError("boom")
+
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.get("/api/crash")
+    assert resp.status_code == 500
+    data = resp.json()
+    assert data["success"] is False
+    assert data["error"] == "Internal server error."
 
 
 def test_api_server_start_stop() -> None:

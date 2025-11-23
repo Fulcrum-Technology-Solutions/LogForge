@@ -46,6 +46,14 @@ def _normalize_diff_target(value: str) -> str:
     return normalized
 
 
+def _normalize_merge_strategy(value: str) -> str:
+    allowed = {"default", "custom"}
+    normalized = value.lower()
+    if normalized not in allowed:
+        raise typer.BadParameter(f"--strategy must be one of: {', '.join(sorted(allowed))}")
+    return normalized
+
+
 def _read_lines(path: Path) -> List[str]:
     return path.read_text().splitlines()
 
@@ -202,3 +210,58 @@ def diff_template(
             typer.echo("\n".join(diff_lines))
     if not has_diff:
         typer.secho("No differences detected.", fg=typer.colors.GREEN)
+
+
+@app.command("merge")
+def merge_template(
+    template_id: str = typer.Argument(...),
+    strategy: str = typer.Option(
+        "default",
+        "--strategy",
+        "-s",
+        help="Merge strategy: 'default' overwrites with default, 'custom' keeps current files.",
+        show_default=True,
+    ),
+    backup: bool = typer.Option(
+        True,
+        "--backup/--no-backup",
+        help="Create .bak files before overwriting.",
+    ),
+) -> None:
+    """Sync default template changes into the custom copy."""
+    loader = TemplateLoader()
+    default_dir = loader.default_dir / template_id
+    custom_dir = loader.custom_dir / template_id
+    if not default_dir.exists():
+        typer.secho(f"Default template '{template_id}' not found.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    custom_dir.mkdir(parents=True, exist_ok=True)
+    normalized_strategy = _normalize_merge_strategy(strategy)
+    files = [
+        ("metadata.yaml", default_dir / "metadata.yaml", custom_dir / "metadata.yaml"),
+        ("template.j2", default_dir / "template.j2", custom_dir / "template.j2"),
+    ]
+    changed = False
+    for label, default_path, custom_path in files:
+        if not default_path.exists():
+            continue
+        if normalized_strategy == "custom" and custom_path.exists():
+            continue
+        if custom_path.exists() and normalized_strategy == "default":
+            if default_path.read_text() == custom_path.read_text():
+                continue
+            if backup:
+                backup_path = custom_path.with_suffix(custom_path.suffix + ".bak")
+                shutil.copy2(custom_path, backup_path)
+            shutil.copy2(default_path, custom_path)
+            changed = True
+        elif not custom_path.exists():
+            shutil.copy2(default_path, custom_path)
+            changed = True
+    if changed:
+        typer.secho(
+            f"Merged template '{template_id}' using strategy '{normalized_strategy}'.",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        typer.secho("No changes applied during merge.", fg=typer.colors.YELLOW)
