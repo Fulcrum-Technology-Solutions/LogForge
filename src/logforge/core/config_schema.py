@@ -102,10 +102,15 @@ class OutputDefinition(BaseModel):
     headers: Optional[dict[str, Any]] = None
     host: Optional[str] = None
     port: Optional[int] = Field(default=None, ge=1, le=65535)
-    protocol: Optional[Literal["tcp", "udp"]] = None
+    protocol: Optional[Literal["tcp", "udp", "tls"]] = None
     delimiter: Optional[str] = None
+    syslog_format: Optional[Literal["rfc5424", "rfc3164"]] = None
+    facility: Optional[int] = Field(default=None, ge=0, le=23)
+    severity: Optional[int] = Field(default=None, ge=0, le=7)
+    app_name: Optional[str] = None
     batch_size: Optional[int] = Field(default=None, ge=1)
     batch_interval: Optional[int] = Field(default=None, ge=0)
+    timeout: Optional[int] = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def ensure_required_fields(self) -> OutputDefinition:

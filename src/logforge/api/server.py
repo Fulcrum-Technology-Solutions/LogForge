@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import threading
+import time
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
+import psutil
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -32,6 +35,9 @@ from logforge.api.models import (
 )
 from logforge.templates.loader import TemplateLoader, TemplateRecord
 
+if TYPE_CHECKING:
+    from logforge.core.service import LogForgeService
+
 
 @dataclass
 class APIDependencies:
@@ -54,7 +60,269 @@ class APIDependencies:
     get_output: Callable[[str], Optional[dict[str, Any]]] = lambda _t: None
 
 
+def build_dependencies_from_service(service: "LogForgeService") -> APIDependencies:
+    """Build API dependencies from a LogForgeService instance."""
+    start_time = time.monotonic()
+
+    def health() -> HealthResponse:
+        snapshots = service.engine.list_snapshots()
+        running = sum(1 for s in snapshots if s.state.value == "RUNNING")
+        degraded = sum(1 for s in snapshots if s.state.value == "DEGRADED")
+        error = sum(1 for s in snapshots if s.state.value == "ERROR")
+        total = len(snapshots)
+
+        status_val = "healthy"
+        if error > 0:
+            status_val = "unhealthy"
+        elif degraded > 0:
+            status_val = "degraded"
+
+        return HealthResponse(
+            status=status_val,
+            uptime=int(time.monotonic() - start_time),
+            generators=GeneratorSummary(
+                total=total,
+                running=running,
+                degraded=degraded,
+                error=error,
+            ),
+            entity_registry="healthy",  # TODO: check registry health
+            template_cache="healthy",  # TODO: check template cache health
+        )
+
+    def status() -> StatusResponse:
+        snapshots = service.engine.list_snapshots()
+        generators = []
+        for snapshot in snapshots:
+            freq_controller = None
+            for gen in service.engine._generators.values():
+                if gen.config.name == snapshot.name:
+                    freq_controller = gen.frequency
+                    break
+
+            current_rate = freq_controller.current_rate() if freq_controller else snapshot.frequency.get("base_rate", 0)
+            generators.append(
+                GeneratorStatus(
+                    name=snapshot.name,
+                    state=snapshot.state.value,
+                    template=snapshot.template,
+                    enabled=snapshot.enabled,
+                    frequency=FrequencyInfo(
+                        base_rate=snapshot.frequency.get("base_rate", 0),
+                        current_rate=current_rate,
+                    ),
+                    outputs=snapshot.outputs,
+                    statistics=GeneratorStatistics(
+                        events_generated=snapshot.statistics.get("events_generated", 0),
+                        errors=snapshot.statistics.get("errors", 0),
+                        uptime=int(snapshot.statistics.get("uptime", 0.0)),
+                        last_event=snapshot.statistics.get("last_event"),
+                    ),
+                )
+            )
+
+        process = psutil.Process(os.getpid())
+        return StatusResponse(
+            uptime=int(time.monotonic() - start_time),
+            version="1.0.0",
+            generators=generators,
+            system=SystemMetrics(
+                cpu_percent=process.cpu_percent(interval=0.1),
+                memory_mb=process.memory_info().rss / 1024 / 1024,
+                threads=process.num_threads(),
+            ),
+        )
+
+    request_counter = Counter("api_requests_total", "Total API requests")
+    health_gauge = Gauge("generator_count", "Total generators", ["state"])
+
+    def metrics() -> bytes:
+        request_counter.inc()
+        health_summary = health()
+        health_gauge.labels("running").set(health_summary.generators.running)
+        health_gauge.labels("degraded").set(health_summary.generators.degraded)
+        health_gauge.labels("error").set(health_summary.generators.error)
+        return generate_latest()
+
+    def template_summary(record: TemplateRecord) -> dict[str, Any]:
+        metadata = record.metadata
+        return {
+            "id": record.template_id,
+            "name": metadata.name,
+            "vendor": metadata.vendor,
+            "product": metadata.product,
+            "data_source": metadata.data_source,
+            "version": metadata.version,
+            "location": record.location,
+        }
+
+    def template_detail(record: TemplateRecord) -> dict[str, Any]:
+        return {
+            "summary": template_summary(record),
+            "metadata": record.metadata.model_dump(),
+        }
+
+    def list_templates() -> list[dict[str, Any]]:
+        return [template_summary(record) for record in service.template_loader.list_templates()]
+
+    def get_template(template_id: str) -> Optional[dict[str, Any]]:
+        record = service.template_loader.get_template(template_id)
+        if record is None:
+            return None
+        return template_detail(record)
+
+    def list_generators() -> list[dict[str, Any]]:
+        snapshots = service.engine.list_snapshots()
+        result = []
+        for snapshot in snapshots:
+            freq_controller = None
+            for gen in service.engine._generators.values():
+                if gen.config.name == snapshot.name:
+                    freq_controller = gen.frequency
+                    break
+
+            current_rate = freq_controller.current_rate() if freq_controller else snapshot.frequency.get("base_rate", 0)
+            result.append({
+                "name": snapshot.name,
+                "state": snapshot.state.value,
+                "template": snapshot.template,
+                "enabled": snapshot.enabled,
+                "frequency": {
+                    "base_rate": snapshot.frequency.get("base_rate", 0),
+                    "current_rate": current_rate,
+                },
+                "outputs": snapshot.outputs,
+                "statistics": snapshot.statistics,
+            })
+        return result
+
+    def get_generator(name: str) -> Optional[dict[str, Any]]:
+        try:
+            snapshot = service.engine.snapshot(name)
+            freq_controller = service.engine._generators[name].frequency
+            current_rate = freq_controller.current_rate()
+            return {
+                "name": snapshot.name,
+                "state": snapshot.state.value,
+                "template": snapshot.template,
+                "enabled": snapshot.enabled,
+                "frequency": {
+                    "base_rate": snapshot.frequency.get("base_rate", 0),
+                    "current_rate": current_rate,
+                },
+                "outputs": snapshot.outputs,
+                "statistics": snapshot.statistics,
+            }
+        except KeyError:
+            return None
+
+    def start_generator(name: str) -> dict[str, Any]:
+        snapshot = service.engine.start(name)
+        freq_controller = service.engine._generators[name].frequency
+        current_rate = freq_controller.current_rate()
+        return {
+            "name": snapshot.name,
+            "state": snapshot.state.value,
+            "template": snapshot.template,
+            "enabled": snapshot.enabled,
+            "frequency": {
+                "base_rate": snapshot.frequency.get("base_rate", 0),
+                "current_rate": current_rate,
+            },
+            "outputs": snapshot.outputs,
+            "statistics": snapshot.statistics,
+        }
+
+    def stop_generator(name: str) -> dict[str, Any]:
+        snapshot = service.engine.stop(name)
+        freq_controller = service.engine._generators[name].frequency
+        current_rate = freq_controller.current_rate()
+        return {
+            "name": snapshot.name,
+            "state": snapshot.state.value,
+            "template": snapshot.template,
+            "enabled": snapshot.enabled,
+            "frequency": {
+                "base_rate": snapshot.frequency.get("base_rate", 0),
+                "current_rate": current_rate,
+            },
+            "outputs": snapshot.outputs,
+            "statistics": snapshot.statistics,
+        }
+
+    def restart_generator(name: str) -> dict[str, Any]:
+        snapshot = service.engine.restart(name)
+        freq_controller = service.engine._generators[name].frequency
+        current_rate = freq_controller.current_rate()
+        return {
+            "name": snapshot.name,
+            "state": snapshot.state.value,
+            "template": snapshot.template,
+            "enabled": snapshot.enabled,
+            "frequency": {
+                "base_rate": snapshot.frequency.get("base_rate", 0),
+                "current_rate": current_rate,
+            },
+            "outputs": snapshot.outputs,
+            "statistics": snapshot.statistics,
+        }
+
+    def list_outputs() -> list[dict[str, Any]]:
+        # TODO: Track output instances and their status
+        outputs = []
+        for definition in service.config.outputs.definitions:
+            outputs.append({
+                "name": definition.name,
+                "type": definition.type,
+                "status": "healthy",
+                "configuration": definition.model_dump(exclude={"name", "type"}),
+                "statistics": {
+                    "events_sent": 0,
+                    "errors": 0,
+                    "buffered_events": 0,
+                    "last_error": None,
+                },
+            })
+        return outputs
+
+    def get_output(name: str) -> Optional[dict[str, Any]]:
+        for definition in service.config.outputs.definitions:
+            if definition.name == name:
+                return {
+                    "name": definition.name,
+                    "type": definition.type,
+                    "status": "healthy",
+                    "configuration": definition.model_dump(exclude={"name", "type"}),
+                    "statistics": {
+                        "events_sent": 0,
+                        "errors": 0,
+                        "buffered_events": 0,
+                        "last_error": None,
+                    },
+                }
+        return None
+
+    return APIDependencies(
+        get_health=health,
+        get_status=status,
+        get_metrics=metrics,
+        entities_summary=service.entity_registry.summary,
+        list_entities=lambda entity_type: service.entity_registry.list_entities(entity_type),
+        create_entity=lambda entity_type, payload: service.entity_registry.add_entity(entity_type, payload),
+        list_templates=list_templates,
+        get_template=get_template,
+        list_generators=list_generators,
+        get_generator=get_generator,
+        start_generator=start_generator,
+        stop_generator=stop_generator,
+        restart_generator=restart_generator,
+        list_outputs=list_outputs,
+        get_output=get_output,
+    )
+
+
 def default_dependencies() -> APIDependencies:
+    """Create default mock dependencies for testing."""
     from logforge.entities.registry import EntityRegistry
 
     registry = EntityRegistry()
