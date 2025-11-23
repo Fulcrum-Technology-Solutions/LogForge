@@ -78,6 +78,25 @@ class TemplateDetailResponse(BaseModel):
     metadata: TemplateMetadata
 
 
+class OutputStatistics(BaseModel):
+    events_sent: int = 0
+    errors: int = 0
+    buffered_events: int = 0
+    last_error: Optional[str] = None
+
+
+class OutputSummary(BaseModel):
+    name: str
+    type: str
+    status: Literal["healthy", "degraded", "error"] = "healthy"
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    statistics: OutputStatistics = Field(default_factory=OutputStatistics)
+
+
+class OutputListResponse(BaseModel):
+    outputs: list[OutputSummary] = Field(default_factory=list)
+
+
 class ErrorResponse(BaseModel):
     success: Literal[False] = False
     error: str
@@ -93,5 +112,7 @@ __all__ = [
     "TemplateSummary",
     "TemplateListResponse",
     "TemplateDetailResponse",
+    "OutputSummary",
+    "OutputListResponse",
     "ErrorResponse",
 ]

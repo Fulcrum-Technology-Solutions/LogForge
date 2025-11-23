@@ -17,6 +17,7 @@ from logforge.api.endpoints.entities import create_entities_router
 from logforge.api.endpoints.generators import create_generators_router
 from logforge.api.endpoints.health import create_health_router
 from logforge.api.endpoints.metrics import create_metrics_router
+from logforge.api.endpoints.outputs import create_outputs_router
 from logforge.api.endpoints.templates import create_templates_router
 from logforge.api.models import (
     ErrorResponse,
@@ -48,6 +49,8 @@ class APIDependencies:
     start_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
     stop_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
     restart_generator: Callable[[str], dict[str, Any]] = lambda _t: {}
+    list_outputs: Callable[[], list[dict[str, Any]]] = lambda: []
+    get_output: Callable[[str], Optional[dict[str, Any]]] = lambda _t: None
 
 
 def default_dependencies() -> APIDependencies:
@@ -66,6 +69,20 @@ def default_dependencies() -> APIDependencies:
         )
     ]
     generator_snapshots = [status.model_dump() for status in generators]
+    outputs_data = [
+        {
+            "name": "default_file",
+            "type": "file",
+            "status": "healthy",
+            "configuration": {"path": "{generator}.log"},
+            "statistics": {
+                "events_sent": 0,
+                "errors": 0,
+                "buffered_events": 0,
+                "last_error": None,
+            },
+        }
+    ]
 
     def health() -> HealthResponse:
         return HealthResponse(
@@ -149,6 +166,15 @@ def default_dependencies() -> APIDependencies:
             raise HTTPException(status_code=404, detail="Generator not found")
         return snapshot
 
+    def list_outputs() -> list[dict[str, Any]]:
+        return outputs_data
+
+    def get_output(name: str) -> Optional[dict[str, Any]]:
+        for output in outputs_data:
+            if output["name"] == name:
+                return output
+        return None
+
     return APIDependencies(
         get_health=health,
         get_status=status,
@@ -163,6 +189,8 @@ def default_dependencies() -> APIDependencies:
         start_generator=start_generator,
         stop_generator=stop_generator,
         restart_generator=restart_generator,
+        list_outputs=list_outputs,
+        get_output=get_output,
     )
 
 
@@ -198,12 +226,14 @@ def create_app(
     metrics_router = create_metrics_router(deps, auth_dependency)
     entities_router = create_entities_router(deps, auth_dependency)
     templates_router = create_templates_router(deps, auth_dependency)
+    outputs_router = create_outputs_router(deps, auth_dependency)
     generators_router = create_generators_router(deps, auth_dependency)
 
     app.include_router(health_router, prefix="/api")
     app.include_router(metrics_router, prefix="/api")
     app.include_router(entities_router, prefix="/api")
     app.include_router(templates_router, prefix="/api")
+    app.include_router(outputs_router, prefix="/api")
     app.include_router(generators_router, prefix="/api")
 
     @app.get("/api/healthz", include_in_schema=False)

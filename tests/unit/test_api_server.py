@@ -66,6 +66,15 @@ def make_dependencies() -> APIDependencies:
     deps.start_generator = lambda name: generator_data
     deps.stop_generator = lambda name: generator_data
     deps.restart_generator = lambda name: generator_data
+    output_data = {
+        "name": "default_file",
+        "type": "file",
+        "status": "healthy",
+        "configuration": {"path": "{generator}.log"},
+        "statistics": {"events_sent": 1, "errors": 0, "buffered_events": 0, "last_error": None},
+    }
+    deps.list_outputs = lambda: [output_data]
+    deps.get_output = lambda name: output_data if name == "default_file" else None
     return deps
 
 
@@ -157,6 +166,18 @@ def test_generators_endpoints() -> None:
     assert status_resp.status_code == 200
     start_resp = client.post("/api/generators/windows_security/start")
     assert start_resp.status_code == 200
+
+
+def test_outputs_endpoints() -> None:
+    deps = make_dependencies()
+    app = create_app(dependencies=deps)
+    client = TestClient(app)
+    resp = client.get("/api/outputs")
+    assert resp.status_code == 200
+    outputs = resp.json()["outputs"]
+    assert outputs[0]["name"] == "default_file"
+    detail = client.get("/api/outputs/default_file")
+    assert detail.status_code == 200
 
 
 def test_http_exception_handler_returns_error_payload() -> None:
