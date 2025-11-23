@@ -4,6 +4,8 @@ import io
 import json
 import zipfile
 
+import yaml
+
 from typer.testing import CliRunner
 
 from logforge.cli.main import app
@@ -166,24 +168,42 @@ def test_templates_merge_custom_strategy_keeps_changes(monkeypatch, tmp_path):
 
 
 class DummyCommunityClient:
-    def __init__(self, *, results=None, archive: bytes | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        results=None,
+        archive: bytes | None = None,
+        details: dict | None = None,
+        archives: dict | None = None,
+    ) -> None:
         self.results = results or []
         self.archive = archive
+        self.details = details or {}
+        self.archives = archives or {}
 
     def search_templates(self, query: str, limit: int = 20):
         return self.results
 
+    def get_template_details(self, template_id: str) -> dict:
+        if template_id in self.details:
+            return self.details[template_id]
+        return {"metadata": {"id": template_id, "name": "Example", "version": "1.0.0"}}
+
     def download_template(self, template_id: str) -> bytes:
+        if template_id in self.archives:
+            return self.archives[template_id]
         if self.archive is None:
             raise AssertionError("No archive set")
         return self.archive
 
 
-def _make_archive() -> bytes:
+def _make_archive(metadata_text: str | None = None, template_body: str | None = None) -> bytes:
+    metadata_content = metadata_text or "id: vendor/product/example\nname: Example\n"
+    template_content = template_body or "{{ metadata.name }}"
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as zf:
-        zf.writestr("metadata.yaml", "id: vendor/product/example\nname: Example\n")
-        zf.writestr("template.j2", "{{ metadata.name }}")
+        zf.writestr("metadata.yaml", metadata_content)
+        zf.writestr("template.j2", template_content)
     return buffer.getvalue()
 
 
@@ -214,3 +234,127 @@ def test_templates_install_command(monkeypatch, tmp_path):
     target_dir = tmp_path / "vendor/product/example"
     assert (target_dir / "metadata.yaml").exists()
     assert (target_dir / "template.j2").exists()
+
+
+def test_templates_create_command_generates_files(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    custom_dir = home / "templates" / "custom"
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    result = runner.invoke(
+        app,
+        [
+            "templates",
+            "create",
+            "--vendor",
+            "Acme",
+            "--product",
+            "Firewall",
+            "--name",
+            "Blocked Connection",
+            "--data-source",
+            "firewall",
+            "--description",
+            "Example description",
+            "--tag",
+            "network",
+            "--tag",
+            "security",
+            "--destination",
+            str(custom_dir),
+            "--force",
+        ],
+    )
+    assert result.exit_code == 0
+    target_dir = custom_dir / "acme" / "firewall" / "blocked-connection"
+    metadata_path = target_dir / "metadata.yaml"
+    template_path = target_dir / "template.j2"
+    assert metadata_path.exists()
+    metadata = yaml.safe_load(metadata_path.read_text())
+    assert metadata["vendor"] == "Acme"
+    assert metadata["tags"] == ["network", "security"]
+    assert template_path.exists()
+
+
+def test_templates_download_command(monkeypatch, tmp_path):
+    fake = DummyCommunityClient(archive=b"archive-bytes")
+    monkeypatch.setattr("logforge.cli.templates._community_client", lambda *args, **kwargs: fake)
+    target = tmp_path / "example.forge"
+    result = runner.invoke(
+        app,
+        [
+            "templates",
+            "download",
+            "vendor/product/example",
+            "--output",
+            str(target),
+            "--force",
+        ],
+    )
+    assert result.exit_code == 0
+    assert target.read_bytes() == b"archive-bytes"
+
+
+def _write_default_template(home, version: str = "1.0.0") -> None:
+    default_dir = home / "templates" / "default" / "vendor" / "product" / "example"
+    default_dir.mkdir(parents=True)
+    metadata_file = default_dir / "metadata.yaml"
+    metadata_file.write_text(METADATA_TEXT + f"version: {version}\n")
+    (default_dir / "template.j2").write_text("{{ metadata.name }}")
+
+
+def test_templates_update_command_check_only(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    _write_default_template(home)
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    details = {
+        "vendor/product/example": {
+            "metadata": {
+                "id": "vendor/product/example",
+                "name": "Example",
+                "version": "1.2.0",
+            }
+        }
+    }
+    fake = DummyCommunityClient(details=details)
+    monkeypatch.setattr("logforge.cli.templates._community_client", lambda *args, **kwargs: fake)
+    result = runner.invoke(app, ["--output", "json", "templates", "update", "--check"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["updates"][0]["latest_version"] == "1.2.0"
+
+
+def test_templates_update_command_installs_update(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    _write_default_template(home)
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    metadata_v2 = "\n".join(
+        [
+            "id: vendor/product/example",
+            "name: Example",
+            "vendor: vendor",
+            "product: product",
+            "data_source: system",
+            "format: json",
+            "version: 2.0.0",
+            "",
+        ]
+    )
+    archive_bytes = _make_archive(metadata_v2, "{{ metadata.name }} v2")
+    details = {
+        "vendor/product/example": {
+            "metadata": {
+                "id": "vendor/product/example",
+                "name": "Example",
+                "version": "2.0.0",
+            }
+        }
+    }
+    fake = DummyCommunityClient(details=details, archives={"vendor/product/example": archive_bytes})
+    monkeypatch.setattr("logforge.cli.templates._community_client", lambda *args, **kwargs: fake)
+    result = runner.invoke(app, ["templates", "update", "--yes"])
+    assert result.exit_code == 0
+    metadata_file = home / "templates" / "default" / "vendor" / "product" / "example" / "metadata.yaml"
+    metadata = yaml.safe_load(metadata_file.read_text())
+    assert metadata["version"] == "2.0.0"
+    template_path = metadata_file.with_name("template.j2")
+    assert template_path.read_text() == "{{ metadata.name }} v2"
