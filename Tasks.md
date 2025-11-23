@@ -333,10 +333,9 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 - [x] Implement Jinja2 syntax validation
   - Implemented: `TemplateValidator` parses template sources via Jinja2 parser to surface syntax errors before rendering; covered by `tests/unit/test_template_validator.py`.
 
-- [ ] Implement template safety checks (no eval, exec, file access)
-  - Acceptance: Rejects unsafe template operations
-  - Dependencies: Template validation
-  - Notes: Sandbox Jinja2 environment
+- [x] Implement template safety checks (no eval, exec, file access)
+  - Implemented: Template validator scans parsed sources for dangerous tokens (`__import__`, `open`, `eval`, etc.) and rejects double-underscore variables before runtime execution.
+  - Tested: `tests/unit/test_template_validator.py::test_validator_blocks_unsafe_constructs`.
 
 - [x] Implement metadata validation against schema
   - Implemented: Metadata parsed/validated via `TemplateMetadata` Pydantic model enforcing required fields/types, ensuring schema compliance until JSON-schema hook is wired.
@@ -349,10 +348,8 @@ LogForge is a synthetic event log generator that produces realistic log data fro
 - [x] Implement `logforge templates customize` command
   - Implemented: CLI command copies default template trees into `custom/` with optional `--force` overwrite, as seen in `logforge.cli.templates`.
 
-- [ ] Implement `logforge templates diff` command
-  - Acceptance: Shows differences between custom and default versions
-  - Dependencies: Template loader
-  - Notes: Use configured diff tool or built-in
+- [x] Implement `logforge templates diff` command
+  - Implemented: CLI generates unified diffs for metadata and template files using `difflib`, highlighting divergence between default/custom copies.
 
 - [ ] Implement `logforge templates merge` command
   - Acceptance: Attempts to merge default changes into custom (interactive)

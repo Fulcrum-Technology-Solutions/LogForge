@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound, meta
 
 from logforge.templates.filters import register_filters
 from logforge.templates.loader import TemplateLoader, TemplateRecord
@@ -73,11 +73,38 @@ class TemplateValidator:
         template_name = template_path.as_posix()
         try:
             source, _, _ = self.env.loader.get_source(self.env, template_name)
-            self.env.parse(source)
+            parsed = self.env.parse(source)
+            self._enforce_template_safety(source, parsed, template_name)
         except TemplateNotFound as exc:
             raise TemplateValidationError(f"Template not found: {template_name}") from exc
         except Exception as exc:  # pragma: no cover - jinja error surfaces line info
             raise TemplateValidationError(f"Jinja2 validation failed: {exc}") from exc
+
+    def _enforce_template_safety(self, source: str, parsed, template_name: str) -> None:
+        unsafe_tokens = [
+            "__import__",
+            "os.",
+            "subprocess",
+            "open(",
+            "eval(",
+            "exec(",
+            "popen(",
+            "importlib.",
+            "sys.",
+            "builtins.",
+        ]
+        lowered = source.lower()
+        for token in unsafe_tokens:
+            if token in lowered:
+                raise TemplateValidationError(
+                    f"Template '{template_name}' references unsafe construct '{token}'."
+                )
+        referenced = meta.find_undeclared_variables(parsed)
+        for name in referenced:
+            if name.startswith("__"):
+                raise TemplateValidationError(
+                    f"Template '{template_name}' references unsafe variable '{name}'."
+                )
 
 
 __all__ = ["TemplateValidator", "TemplateValidationResult", "TemplateValidationError"]

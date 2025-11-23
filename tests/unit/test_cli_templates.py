@@ -8,6 +8,18 @@ from logforge.cli.main import app
 
 runner = CliRunner()
 
+METADATA_TEXT = "\n".join(
+    [
+        "id: vendor/product/example",
+        "name: Example",
+        "vendor: vendor",
+        "product: product",
+        "data_source: system",
+        "format: json",
+        "",
+    ]
+)
+
 
 class FakeClient:
     def get(self, path: str):
@@ -70,18 +82,7 @@ def test_templates_customize_and_revert(tmp_path, monkeypatch):
     home = tmp_path / "home"
     default_dir = home / "templates" / "default" / "vendor" / "product" / "example"
     default_dir.mkdir(parents=True)
-    metadata = "\n".join(
-        [
-            "id: vendor/product/example",
-            "name: Example",
-            "vendor: vendor",
-            "product: product",
-            "data_source: system",
-            "format: json",
-            "",
-        ]
-    )
-    (default_dir / "metadata.yaml").write_text(metadata)
+    (default_dir / "metadata.yaml").write_text(METADATA_TEXT)
     (default_dir / "template.j2").write_text("hello")
     monkeypatch.setenv("LOGFORGE_HOME", str(home))
 
@@ -99,20 +100,26 @@ def test_templates_validate_by_path(tmp_path, monkeypatch):
     home = tmp_path / "home"
     template_dir = home / "templates" / "default" / "vendor" / "product" / "example"
     template_dir.mkdir(parents=True)
-    metadata_text = "\n".join(
-        [
-            "id: vendor/product/example",
-            "name: Example",
-            "vendor: vendor",
-            "product: product",
-            "data_source: system",
-            "format: json",
-            "",
-        ]
-    )
     metadata_file = template_dir / "metadata.yaml"
-    metadata_file.write_text(metadata_text)
+    metadata_file.write_text(METADATA_TEXT)
     (template_dir / "template.j2").write_text("{{ metadata.name }}")
     monkeypatch.setenv("LOGFORGE_HOME", str(home))
     result = runner.invoke(app, ["templates", "validate", "--path", str(metadata_file)])
     assert result.exit_code == 0
+
+
+def test_templates_diff(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    default_dir = home / "templates" / "default" / "vendor" / "product" / "example"
+    custom_dir = home / "templates" / "custom" / "vendor" / "product" / "example"
+    default_dir.mkdir(parents=True)
+    custom_dir.mkdir(parents=True)
+    (default_dir / "metadata.yaml").write_text(METADATA_TEXT)
+    (custom_dir / "metadata.yaml").write_text(METADATA_TEXT.replace("Example", "Custom Example", 1))
+    (default_dir / "template.j2").write_text("hello")
+    (custom_dir / "template.j2").write_text("hello world")
+    monkeypatch.setenv("LOGFORGE_HOME", str(home))
+    result = runner.invoke(app, ["templates", "diff", "vendor/product/example"])
+    assert result.exit_code == 0
+    assert "--- default/metadata.yaml" in result.stdout
+    assert "+hello world" in result.stdout

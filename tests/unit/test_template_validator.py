@@ -42,3 +42,13 @@ def test_validator_detects_missing_template(tmp_path):
     validator = TemplateValidator(loader)
     with pytest.raises(TemplateValidationError):
         validator.validate("vendor/product/example")
+
+
+def test_validator_blocks_unsafe_constructs(tmp_path):
+    templates_dir = tmp_path / "templates"
+    create_template(templates_dir, "vendor/product/example", "{{ __import__('os').system('ls') }}")
+    loader = TemplateLoader(templates_dir=templates_dir, cache_ttl=1)
+    validator = TemplateValidator(loader)
+    with pytest.raises(TemplateValidationError) as exc:
+        validator.validate("vendor/product/example")
+    assert "unsafe" in str(exc.value).lower()

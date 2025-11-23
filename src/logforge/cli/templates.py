@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Sequence
 
 import typer
 
@@ -35,6 +36,30 @@ def _emit(ctx: typer.Context, data: dict) -> None:
                 typer.echo(f"{tpl['id']} [{tpl['location']}] - {tpl['name']}")
         else:
             typer.echo(json.dumps(data, indent=2))
+
+
+def _normalize_diff_target(value: str) -> str:
+    allowed = {"all", "metadata", "template"}
+    normalized = value.lower()
+    if normalized not in allowed:
+        raise typer.BadParameter(f"--file must be one of: {', '.join(sorted(allowed))}")
+    return normalized
+
+
+def _read_lines(path: Path) -> List[str]:
+    return path.read_text().splitlines()
+
+
+def _diff_files(default_path: Path, custom_path: Path) -> Sequence[str]:
+    return list(
+        difflib.unified_diff(
+            _read_lines(default_path),
+            _read_lines(custom_path),
+            fromfile=f"default/{default_path.name}",
+            tofile=f"custom/{custom_path.name}",
+            lineterm="",
+        )
+    )
 
 
 @app.command("list")
@@ -130,3 +155,50 @@ def revert_template(template_id: str = typer.Argument(...)) -> None:
         return
     shutil.rmtree(target_dir)
     typer.secho(f"Reverted custom template '{template_id}'.", fg=typer.colors.GREEN)
+
+
+@app.command("diff")
+def diff_template(
+    template_id: str = typer.Argument(...),
+    file: str = typer.Option(
+        "all",
+        "--file",
+        "-f",
+        help="File(s) to diff (metadata, template, all).",
+        show_default=True,
+    ),
+) -> None:
+    """Show differences between default and custom template files."""
+    loader = TemplateLoader()
+    default_dir = loader.default_dir / template_id
+    custom_dir = loader.custom_dir / template_id
+    if not default_dir.exists():
+        typer.secho(f"Default template '{template_id}' not found.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    if not custom_dir.exists():
+        typer.secho("No custom template to diff.", fg=typer.colors.YELLOW)
+        raise typer.Exit(code=1)
+
+    target = _normalize_diff_target(file)
+    sections = []
+    if target in {"all", "metadata"}:
+        sections.append(
+            ("metadata.yaml", default_dir / "metadata.yaml", custom_dir / "metadata.yaml")
+        )
+    if target in {"all", "template"}:
+        sections.append(
+            ("template.j2", default_dir / "template.j2", custom_dir / "template.j2")
+        )
+
+    has_diff = False
+    for label, default_path, custom_path in sections:
+        if not default_path.exists() or not custom_path.exists():
+            typer.secho(f"Missing {label} for diff.", fg=typer.colors.RED)
+            continue
+        diff_lines = _diff_files(default_path, custom_path)
+        if diff_lines:
+            has_diff = True
+            typer.secho(f"=== {label} ===", fg=typer.colors.CYAN)
+            typer.echo("\n".join(diff_lines))
+    if not has_diff:
+        typer.secho("No differences detected.", fg=typer.colors.GREEN)
