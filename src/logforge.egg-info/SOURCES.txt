@@ -40,6 +40,7 @@ src/logforge/core/engine.py
 src/logforge/core/frequency.py
 src/logforge/core/generator.py
 src/logforge/core/home.py
+src/logforge/core/service.py
 src/logforge/entities/__init__.py
 src/logforge/entities/functions.py
 src/logforge/entities/models.py
